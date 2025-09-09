@@ -1,0 +1,171 @@
+# Backlog
+
+## Epic 1: API Contracts Complete (author/game)
+- **Task**: Document all request/response schemas for author/game endpoints  
+  - *Rationale*: Ensures clear contracts for frontend and test coverage  
+  - *Acceptance*: All endpoints have explicit schemas, error shapes  
+  - *Estimate*: 2d  
+  - *Dependencies*: Constitution, models/schemas.py
+- **Task**: Add negative tests for duplicate storylets, invalid requests  
+  - *Rationale*: Prevent silent failures, ensure robust error handling  
+  - *Acceptance*: Tests pass, errors are actionable  
+  - *Estimate*: 2d  
+  - *Dependencies*: true_tests/api/
+- **Task**: Document side effects and idempotency for all endpoints  
+  - *Rationale*: Traceability and safe bulk ops  
+  - *Acceptance*: Spec sections updated, tests verify  
+  - *Estimate*: 1d  
+  - *Dependencies*: Spec drafts
+
+## Epic 2: Spatial Integrity + Navigation Robustness
+- **Task**: Ensure all storylets have valid spatial coordinates  
+  - *Rationale*: Prevent broken navigation, support compass UI  
+  - *Acceptance*: 100% coverage, dry-run logging  
+  - *Estimate*: 2d  
+  - *Dependencies*: spatial_navigator.py, tests/integration/
+- **Task**: Add tests for 8-direction movement and edge cases  
+  - *Rationale*: Validate navigation logic, prevent regressions  
+  - *Acceptance*: All directions tested, failures logged  
+  - *Estimate*: 2d  
+  - *Dependencies*: test_spatial_navigation.py
+- **Task**: Document coordinate assignment rules and fallbacks  
+  - *Rationale*: Transparency for future devs  
+  - *Acceptance*: Spec updated, code comments  
+  - *Estimate*: 1d  
+  - *Dependencies*: spec drafts
+
+## Epic 3: Storylet Duplicate Prevention + Normalization
+- **Task**: Enforce case-insensitive uniqueness for storylet titles  
+  - *Rationale*: Prevent duplicate content, ensure integrity  
+  - *Acceptance*: DB constraint, negative tests pass  
+  - *Estimate*: 1d  
+  - *Dependencies*: author.py, test_author_duplicates.py
+- **Task**: Normalize choices and requirements for all storylets  
+  - *Rationale*: Consistent API, easier testing  
+  - *Acceptance*: All choices/requirements normalized  
+  - *Estimate*: 1d  
+  - *Dependencies*: schemas.py
+- **Task**: Add tests for duplicate detection and normalization  
+  - *Rationale*: Prevent regressions, ensure coverage  
+  - *Acceptance*: Tests pass, errors are actionable  
+  - *Estimate*: 1d  
+  - *Dependencies*: true_tests/api/
+
+## Epic 4: Async/LLM Robustness + Fallbacks
+- **Task**: Add timeout/retry logic for all LLM calls  
+  - *Rationale*: Prevent blocking, ensure reliability  
+  - *Acceptance*: Timeouts logged, fallbacks used  
+  - *Estimate*: 2d  
+  - *Dependencies*: llm_service.py
+- **Task**: Document fallback storylet logic and error envelopes  
+  - *Rationale*: Transparency, actionable errors  
+  - *Acceptance*: Spec updated, error messages reviewed  
+  - *Estimate*: 1d  
+  - *Dependencies*: spec drafts
+- **Task**: Add tests for LLM failure modes  
+  - *Rationale*: Ensure graceful degradation  
+  - *Acceptance*: Tests pass, errors are actionable  
+  - *Estimate*: 1d  
+  - *Dependencies*: true_tests/api/
+
+## Epic 5: State Manager Persistence + Recovery
+- **Task**: Document state persistence and recovery guarantees  
+  - *Rationale*: Prevent data loss, support save/load  
+  - *Acceptance*: Spec updated, code comments  
+  - *Estimate*: 1d  
+  - *Dependencies*: state_manager.py
+- **Task**: Add tests for session recovery and cache cleanup  
+  - *Rationale*: Ensure robust session management  
+  - *Acceptance*: Tests pass, cache cleaned  
+  - *Estimate*: 2d  
+  - *Dependencies*: test_game_cache_cleanup.py
+- **Task**: Document inventory/environment relationships  
+  - *Rationale*: Clarify model for future devs  
+  - *Acceptance*: Spec updated  
+  - *Estimate*: 1d  
+  - *Dependencies*: spec drafts
+
+## Epic 6: DB Migrations + Idempotence Review
+- **Task**: Review all migrations for idempotence and explicit types  
+  - *Rationale*: Prevent destructive ops, ensure safe upgrades  
+  - *Acceptance*: All migrations idempotent, types explicit  
+  - *Estimate*: 2d  
+  - *Dependencies*: db/
+- **Task**: Add tests for migration edge cases  
+  - *Rationale*: Prevent data loss, ensure coverage  
+  - *Acceptance*: Tests pass, errors logged  
+  - *Estimate*: 1d  
+  - *Dependencies*: tests/database/
+- **Task**: Document migration workflow and confirmation rituals  
+  - *Rationale*: Transparency, prevent accidental drops  
+  - *Acceptance*: Spec updated  
+  - *Estimate*: 1d  
+  - *Dependencies*: spec drafts
+
+## Epic 7: Test Matrix Expansion (race conditions, perf)
+- **Task**: Add race-condition tests for storylet creation/session updates  
+  - *Rationale*: Prevent concurrency bugs  
+  - *Acceptance*: Tests pass, failures logged  
+  - *Estimate*: 2d  
+  - *Dependencies*: true_tests/api/
+- **Task**: Add performance canary tests for large sessions/maps  
+  - *Rationale*: Ensure scalability  
+  - *Acceptance*: Tests pass, metrics logged  
+  - *Estimate*: 2d  
+  - *Dependencies*: tests/integration/
+- **Task**: Document test matrix and coverage goals  
+  - *Rationale*: Clarity for future contributors  
+  - *Acceptance*: Spec updated  
+  - *Estimate*: 1d  
+  - *Dependencies*: spec drafts
+
+## Epic 8: Observability (structured logs, error envelopes)
+- **Task**: Add structured logging for key events (storylet create/update, spatial map, auto-improvement)  
+  - *Rationale*: Debuggability, audit trail  
+  - *Acceptance*: Logs present, errors actionable  
+  - *Estimate*: 2d  
+  - *Dependencies*: services/
+- **Task**: Document error envelope structure and logging policy  
+  - *Rationale*: Consistency, safety  
+  - *Acceptance*: Spec updated  
+  - *Estimate*: 1d  
+  - *Dependencies*: spec drafts
+- **Task**: Add tests for error logging and envelope consistency  
+  - *Rationale*: Prevent leaks, ensure coverage  
+  - *Acceptance*: Tests pass  
+  - *Estimate*: 1d  
+  - *Dependencies*: true_tests/api/
+
+## Epic 9: Twine/Frontend Integration (normalize <br>, no broken listeners)
+- **Task**: Normalize Twine <br> rendering and navigation  
+  - *Rationale*: Prevent UI bugs, improve UX  
+  - *Acceptance*: No broken navigation, tests pass  
+  - *Estimate*: 2d  
+  - *Dependencies*: twine_resources/
+- **Task**: Add tests for frontend integration edge cases  
+  - *Rationale*: Prevent regressions  
+  - *Acceptance*: Tests pass  
+  - *Estimate*: 1d  
+  - *Dependencies*: tests/integration/
+- **Task**: Document Twine integration workflow  
+  - *Rationale*: Clarity for future contributors  
+  - *Acceptance*: Spec updated  
+  - *Estimate*: 1d  
+  - *Dependencies*: spec drafts
+
+## Epic 10: Docs & DevEx (runbook, local setup, env parity)
+- **Task**: Write runbook for local setup and environment parity  
+  - *Rationale*: Lower barrier for new contributors  
+  - *Acceptance*: Runbook complete, onboarding tested  
+  - *Estimate*: 2d  
+  - *Dependencies*: requirements.txt, constitution.md
+- **Task**: Document environment variables and config  
+  - *Rationale*: Prevent config drift  
+  - *Acceptance*: Spec updated  
+  - *Estimate*: 1d  
+  - *Dependencies*: requirements.txt
+- **Task**: Add tests for setup scripts and config validation  
+  - *Rationale*: Prevent setup errors  
+  - *Acceptance*: Tests pass  
+  - *Estimate*: 1d  
+  - *Dependencies*: scripts/
