@@ -5,7 +5,7 @@
   - *Rationale*: Ensures clear contracts for frontend and test coverage  
   - *Acceptance*: All endpoints have explicit schemas, error shapes  
   - *Estimate*: 2d  
-  - *Dependencies*: Constitution, models/schemas.py
+  - *Dependencies*: Constitution, models/schemas.py, specs/01-api-contracts-author.md, specs/02-api-contracts-game.md
 - **Task**: Add negative tests for duplicate storylets, invalid requests  
   - *Rationale*: Prevent silent failures, ensure robust error handling  
   - *Acceptance*: Tests pass, errors are actionable  
@@ -22,7 +22,7 @@
   - *Rationale*: Prevent broken navigation, support compass UI  
   - *Acceptance*: 100% coverage, dry-run logging  
   - *Estimate*: 2d  
-  - *Dependencies*: spatial_navigator.py, tests/integration/
+  - *Dependencies*: spatial_navigator.py, tests/integration/, specs/04-domain-spatial.md
 - **Task**: Add tests for 8-direction movement and edge cases  
   - *Rationale*: Validate navigation logic, prevent regressions  
   - *Acceptance*: All directions tested, failures logged  
@@ -39,7 +39,7 @@
   - *Rationale*: Prevent duplicate content, ensure integrity  
   - *Acceptance*: DB constraint, negative tests pass  
   - *Estimate*: 1d  
-  - *Dependencies*: author.py, test_author_duplicates.py
+  - *Dependencies*: author.py, test_author_duplicates.py, specs/03-domain-storylets.md
 - **Task**: Normalize choices and requirements for all storylets  
   - *Rationale*: Consistent API, easier testing  
   - *Acceptance*: All choices/requirements normalized  
@@ -50,13 +50,18 @@
   - *Acceptance*: Tests pass, errors are actionable  
   - *Estimate*: 1d  
   - *Dependencies*: true_tests/api/
+- **Task**: Document storylet domain rules and normalization  
+  - *Rationale*: Make rules explicit for future contributors  
+  - *Acceptance*: specs/03-domain-storylets.md complete  
+  - *Estimate*: 1d  
+  - *Dependencies*: spec drafts
 
 ## Epic 4: Async/LLM Robustness + Fallbacks
 - **Task**: Add timeout/retry logic for all LLM calls  
   - *Rationale*: Prevent blocking, ensure reliability  
   - *Acceptance*: Timeouts logged, fallbacks used  
   - *Estimate*: 2d  
-  - *Dependencies*: llm_service.py
+  - *Dependencies*: llm_service.py, specs/06-llm-service.md
 - **Task**: Document fallback storylet logic and error envelopes  
   - *Rationale*: Transparency, actionable errors  
   - *Acceptance*: Spec updated, error messages reviewed  
@@ -67,13 +72,18 @@
   - *Acceptance*: Tests pass, errors are actionable  
   - *Estimate*: 1d  
   - *Dependencies*: true_tests/api/
+- **Task**: Document LLM service domain and fallback logic  
+  - *Rationale*: Make LLM rules explicit for future contributors  
+  - *Acceptance*: specs/06-llm-service.md complete  
+  - *Estimate*: 1d  
+  - *Dependencies*: spec drafts
 
 ## Epic 5: State Manager Persistence + Recovery
 - **Task**: Document state persistence and recovery guarantees  
   - *Rationale*: Prevent data loss, support save/load  
   - *Acceptance*: Spec updated, code comments  
   - *Estimate*: 1d  
-  - *Dependencies*: state_manager.py
+  - *Dependencies*: state_manager.py, specs/05-domain-state-manager.md
 - **Task**: Add tests for session recovery and cache cleanup  
   - *Rationale*: Ensure robust session management  
   - *Acceptance*: Tests pass, cache cleaned  
@@ -84,13 +94,18 @@
   - *Acceptance*: Spec updated  
   - *Estimate*: 1d  
   - *Dependencies*: spec drafts
+- **Task**: Document state manager domain and recovery rules  
+  - *Rationale*: Make state manager rules explicit for future contributors  
+  - *Acceptance*: specs/05-domain-state-manager.md complete  
+  - *Estimate*: 1d  
+  - *Dependencies*: spec drafts
 
 ## Epic 6: DB Migrations + Idempotence Review
 - **Task**: Review all migrations for idempotence and explicit types  
   - *Rationale*: Prevent destructive ops, ensure safe upgrades  
   - *Acceptance*: All migrations idempotent, types explicit  
   - *Estimate*: 2d  
-  - *Dependencies*: db/
+  - *Dependencies*: db/, specs/07-db-and-migrations.md
 - **Task**: Add tests for migration edge cases  
   - *Rationale*: Prevent data loss, ensure coverage  
   - *Acceptance*: Tests pass, errors logged  
@@ -101,13 +116,18 @@
   - *Acceptance*: Spec updated  
   - *Estimate*: 1d  
   - *Dependencies*: spec drafts
+- **Task**: Document DB and migration domain rules  
+  - *Rationale*: Make DB/migration rules explicit for future contributors  
+  - *Acceptance*: specs/07-db-and-migrations.md complete  
+  - *Estimate*: 1d  
+  - *Dependencies*: spec drafts
 
 ## Epic 7: Test Matrix Expansion (race conditions, perf)
 - **Task**: Add race-condition tests for storylet creation/session updates  
   - *Rationale*: Prevent concurrency bugs  
   - *Acceptance*: Tests pass, failures logged  
   - *Estimate*: 2d  
-  - *Dependencies*: true_tests/api/
+  - *Dependencies*: true_tests/api/, specs/09-testing-strategy.md
 - **Task**: Add performance canary tests for large sessions/maps  
   - *Rationale*: Ensure scalability  
   - *Acceptance*: Tests pass, metrics logged  
@@ -118,13 +138,18 @@
   - *Acceptance*: Spec updated  
   - *Estimate*: 1d  
   - *Dependencies*: spec drafts
+- **Task**: Document testing strategy and matrix  
+  - *Rationale*: Make testing rules explicit for future contributors  
+  - *Acceptance*: specs/09-testing-strategy.md complete  
+  - *Estimate*: 1d  
+  - *Dependencies*: spec drafts
 
 ## Epic 8: Observability (structured logs, error envelopes)
 - **Task**: Add structured logging for key events (storylet create/update, spatial map, auto-improvement)  
   - *Rationale*: Debuggability, audit trail  
   - *Acceptance*: Logs present, errors actionable  
   - *Estimate*: 2d  
-  - *Dependencies*: services/
+  - *Dependencies*: services/, specs/08-observability-and-errors.md
 - **Task**: Document error envelope structure and logging policy  
   - *Rationale*: Consistency, safety  
   - *Acceptance*: Spec updated  
@@ -135,13 +160,18 @@
   - *Acceptance*: Tests pass  
   - *Estimate*: 1d  
   - *Dependencies*: true_tests/api/
+- **Task**: Document observability and error handling domain  
+  - *Rationale*: Make observability rules explicit for future contributors  
+  - *Acceptance*: specs/08-observability-and-errors.md complete  
+  - *Estimate*: 1d  
+  - *Dependencies*: spec drafts
 
 ## Epic 9: Twine/Frontend Integration (normalize <br>, no broken listeners)
 - **Task**: Normalize Twine <br> rendering and navigation  
   - *Rationale*: Prevent UI bugs, improve UX  
   - *Acceptance*: No broken navigation, tests pass  
   - *Estimate*: 2d  
-  - *Dependencies*: twine_resources/
+  - *Dependencies*: twine_resources/, specs/09-testing-strategy.md
 - **Task**: Add tests for frontend integration edge cases  
   - *Rationale*: Prevent regressions  
   - *Acceptance*: Tests pass  
@@ -152,13 +182,18 @@
   - *Acceptance*: Spec updated  
   - *Estimate*: 1d  
   - *Dependencies*: spec drafts
+- **Task**: Document Twine/Frontend integration domain  
+  - *Rationale*: Make Twine integration rules explicit for future contributors  
+  - *Acceptance*: specs/09-testing-strategy.md complete  
+  - *Estimate*: 1d  
+  - *Dependencies*: spec drafts
 
 ## Epic 10: Docs & DevEx (runbook, local setup, env parity)
 - **Task**: Write runbook for local setup and environment parity  
   - *Rationale*: Lower barrier for new contributors  
   - *Acceptance*: Runbook complete, onboarding tested  
   - *Estimate*: 2d  
-  - *Dependencies*: requirements.txt, constitution.md
+  - *Dependencies*: requirements.txt, constitution.md, specs/10-non-functional.md
 - **Task**: Document environment variables and config  
   - *Rationale*: Prevent config drift  
   - *Acceptance*: Spec updated  
@@ -169,3 +204,8 @@
   - *Acceptance*: Tests pass  
   - *Estimate*: 1d  
   - *Dependencies*: scripts/
+- **Task**: Document non-functional requirements and DevEx  
+  - *Rationale*: Make non-functional rules explicit for future contributors  
+  - *Acceptance*: specs/10-non-functional.md complete  
+  - *Estimate*: 1d  
+  - *Dependencies*: spec drafts
