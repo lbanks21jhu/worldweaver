@@ -34,6 +34,7 @@ class StoryletIn(BaseModel):
     requires: Dict[str, Any] = Field(default_factory=dict)
     choices: List[Dict[str, Any]] = Field(default_factory=list)
     weight: float = 1.0
+    position: Dict[str, int] = Field(default_factory=lambda: {"x": 0, "y": 0}, description="Position for spatial navigation")
 
     # Accept both {"label", "set"} and {"text", "set_vars"}; normalize to label/set
     @field_validator("choices", mode="before")

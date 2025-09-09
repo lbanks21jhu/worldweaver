@@ -617,6 +617,7 @@ def generate_world_from_description(
             choices=starting_storylet_data["choices"],
             requires={},  # No requirements - always accessible
             weight=2.0,  # Higher weight to be chosen more often
+            position={"x": 0, "y": 0},  # Consistent position field for spatial navigation
         )
         db.add(starting_storylet)
         created_storylets.append(
