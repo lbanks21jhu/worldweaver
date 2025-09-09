@@ -27,78 +27,90 @@ from src.models import Storylet
 
 def generate_visual_map() -> str:
     """Generate an HTML visualization of the spatial storylet map."""
-    
+
     with SessionLocal() as db:
         spatial_nav = SpatialNavigator(db)
-        
+
         # Get all storylets with their data
         storylets = db.query(Storylet).all()
         storylet_data = []
-        
+
         for s in storylets:
-            storylet_data.append({
-                'id': s.id,
-                'title': s.title,
-                'text': s.text_template[:100] + "..." if len(s.text_template) > 100 else s.text_template,
-                'requires': s.requires or {},
-                'choices': s.choices or [],
-                'weight': s.weight or 1.0
-            })
-        
+            storylet_data.append(
+                {
+                    "id": s.id,
+                    "title": s.title,
+                    "text": (
+                        s.text_template[:100] + "..."
+                        if len(s.text_template) > 100
+                        else s.text_template
+                    ),
+                    "requires": s.requires or {},
+                    "choices": s.choices or [],
+                    "weight": s.weight or 1.0,
+                }
+            )
+
         # Assign positions if not already done
         if not spatial_nav.storylet_positions:
             print("🔧 Assigning spatial positions...")
             spatial_nav.assign_spatial_positions(storylet_data)
-        
+
         # Get map bounds
         if not spatial_nav.storylet_positions:
             print("❌ No storylets positioned!")
             return "<h1>No storylets found or positioned</h1>"
-        
+
         positions = list(spatial_nav.storylet_positions.values())
         min_x = min(pos.x for pos in positions) - 1
         max_x = max(pos.x for pos in positions) + 1
         min_y = min(pos.y for pos in positions) - 1
         max_y = max(pos.y for pos in positions) + 1
-        
+
         width = max_x - min_x
         height = max_y - min_y
-        
+
         # Scale for display
         cell_size = 120
         margin = 60
         svg_width = width * cell_size + 2 * margin
         svg_height = height * cell_size + 2 * margin
-        
+
         def pos_to_svg(pos: Position) -> tuple[float, float]:
             """Convert grid position to SVG coordinates."""
             x = (pos.x - min_x) * cell_size + margin
             y = (pos.y - min_y) * cell_size + margin
             return x, y
-        
+
         # Build connections map
         connections: List[tuple[int, int, str]] = []
         for storylet in storylet_data:
-            source_id = storylet['id']
+            source_id = storylet["id"]
             source_pos = spatial_nav.storylet_positions.get(source_id)
             if not source_pos:
                 continue
-                
-            for choice in storylet['choices']:
+
+            for choice in storylet["choices"]:
                 # Handle both 'set' and 'set_vars'
-                choice_set = choice.get('set') or choice.get('set_vars') or {}
-                target_location = choice_set.get('location')
-                
+                choice_set = choice.get("set") or choice.get("set_vars") or {}
+                target_location = choice_set.get("location")
+
                 if target_location:
                     # Find storylets that require this location
                     for target_storylet in storylet_data:
-                        target_requires = target_storylet.get('requires', {})
-                        if target_requires.get('location') == target_location:
-                            target_id = target_storylet['id']
+                        target_requires = target_storylet.get("requires", {})
+                        if target_requires.get("location") == target_location:
+                            target_id = target_storylet["id"]
                             target_pos = spatial_nav.storylet_positions.get(target_id)
                             if target_pos:
-                                connections.append((source_id, target_id, choice.get('label', 'Continue')))
-        
+                                connections.append(
+                                    (
+                                        source_id,
+                                        target_id,
+                                        choice.get("label", "Continue"),
+                                    )
+                                )
+
         # Generate HTML
         html = f"""
 <!DOCTYPE html>
@@ -254,47 +266,49 @@ def generate_visual_map() -> str:
                 
                 <!-- Connections -->
         """
-        
+
         for source_id, target_id, choice_label in connections:
             source_pos = spatial_nav.storylet_positions[source_id]
             target_pos = spatial_nav.storylet_positions[target_id]
-            
+
             sx, sy = pos_to_svg(source_pos)
             tx, ty = pos_to_svg(target_pos)
-            
+
             # Add some curve to avoid overlapping lines
             mid_x = (sx + tx) / 2
             mid_y = (sy + ty) / 2 - 20
-            
+
             html += f"""
                 <path class="connection" d="M {sx},{sy} Q {mid_x},{mid_y} {tx},{ty}"
                       data-choice="{choice_label}" />
             """
-        
+
         html += "\n                <!-- Storylets -->"
-        
+
         for storylet in storylet_data:
-            storylet_id = storylet['id']
+            storylet_id = storylet["id"]
             pos = spatial_nav.storylet_positions.get(storylet_id)
             if not pos:
                 continue
-                
+
             x, y = pos_to_svg(pos)
-            
+
             # Determine storylet color based on requirements
-            requires = storylet.get('requires', {})
-            if 'location' in requires:
+            requires = storylet.get("requires", {})
+            if "location" in requires:
                 color = "#27ae60"  # Green for location-based
-            elif 'danger' in requires:
+            elif "danger" in requires:
                 color = "#e74c3c"  # Red for danger-based
             elif requires:
                 color = "#f39c12"  # Orange for other requirements
             else:
                 color = "#667eea"  # Blue for no requirements
-            
+
             # Truncate title for display
-            display_title = storylet['title'][:12] + ("..." if len(storylet['title']) > 12 else "")
-            
+            display_title = storylet["title"][:12] + (
+                "..." if len(storylet["title"]) > 12 else ""
+            )
+
             # Escape for HTML
             tooltip_text = (
                 f"Title: {storylet['title']}\\n"
@@ -304,14 +318,14 @@ def generate_visual_map() -> str:
                 f"Choices: {len(storylet['choices'])}\\n"
                 f"Weight: {storylet['weight']}"
             )
-            
+
             html += f"""
                 <g class="storylet" data-id="{storylet_id}" data-tooltip="{tooltip_text}">
                     <circle cx="{x}" cy="{y}" r="25" class="storylet-node" fill="{color}" />
                     <text x="{x}" y="{y}" class="storylet-text">{display_title}</text>
                 </g>
             """
-        
+
         html += f"""
             </svg>
         </div>
@@ -367,28 +381,29 @@ def generate_visual_map() -> str:
 </body>
 </html>
         """
-        
+
         return html
 
 
 def main():
     """Generate and save the visual map."""
     print("🗺️ Generating Spatial Storylet Map...")
-    
+
     html_content = generate_visual_map()
-    
+
     # Save to file in reports/
     reports_dir = project_root / "reports"
     reports_dir.mkdir(parents=True, exist_ok=True)
     output_file = reports_dir / "spatial_map.html"
-    with open(output_file, 'w', encoding='utf-8') as f:
+    with open(output_file, "w", encoding="utf-8") as f:
         f.write(html_content)
-    
+
     print(f"✅ Map saved to: {output_file}")
     print(f"🌐 Open in browser: file://{output_file.absolute()}")
-    
+
     # Also try to open automatically
     import webbrowser
+
     try:
         webbrowser.open(f"file://{output_file.absolute()}")
         print("🚀 Opened in default browser!")

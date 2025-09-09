@@ -13,26 +13,28 @@ import os
 
 def get_storylets_from_db():
     """Get all storylets from the database."""
-    conn = sqlite3.connect('worldweaver.db')
+    conn = sqlite3.connect("worldweaver.db")
     cursor = conn.cursor()
-    
-    cursor.execute("""
+
+    cursor.execute(
+        """
         SELECT id, title, text_template, requires, choices, weight 
         FROM storylets
-    """)
-    
+    """
+    )
+
     storylets = []
     for row in cursor.fetchall():
         storylet = {
-            'id': row[0],
-            'title': row[1],
-            'text': row[2][:50] + '...' if len(row[2]) > 50 else row[2],
-            'requires': json.loads(row[3]) if row[3] else {},
-            'choices': json.loads(row[4]) if row[4] else [],
-            'weight': row[5]
+            "id": row[0],
+            "title": row[1],
+            "text": row[2][:50] + "..." if len(row[2]) > 50 else row[2],
+            "requires": json.loads(row[3]) if row[3] else {},
+            "choices": json.loads(row[4]) if row[4] else [],
+            "weight": row[5],
         }
         storylets.append(storylet)
-    
+
     conn.close()
     return storylets
 
@@ -45,48 +47,48 @@ def analyze_connections(storylets):
     variables_required = set()
     variables_set = Counter()
     dead_end_variables = set()
-    
+
     # Extract locations and analyze variable flow
     for storylet in storylets:
         # Get location requirement
-        location = storylet['requires'].get('location', 'No Location')
+        location = storylet["requires"].get("location", "No Location")
         locations.add(location)
         location_storylets[location].append(storylet)
-        
+
         # Track required variables
-        for var in storylet['requires'].keys():
+        for var in storylet["requires"].keys():
             variables_required.add(var)
-        
+
         # Analyze choices for location changes and variable setting
-        for choice in storylet['choices']:
-            choice_sets = choice.get('set', {})
-            
+        for choice in storylet["choices"]:
+            choice_sets = choice.get("set", {})
+
             # Track variables being set
             for var, value in choice_sets.items():
                 variables_set[var] += 1
-                
+
             # Track location connections
-            new_location = choice_sets.get('location')
+            new_location = choice_sets.get("location")
             if new_location and new_location != location:
                 location_connections[location].add(new_location)
-    
+
     # Find dead-end variables (set but never required)
     all_set_vars = set(variables_set.keys())
     dead_end_variables = all_set_vars - variables_required
-    
+
     return {
-        'locations': locations,
-        'location_storylets': location_storylets,
-        'location_connections': location_connections,
-        'variables_required': variables_required,
-        'variables_set': dict(variables_set),
-        'dead_end_variables': dead_end_variables
+        "locations": locations,
+        "location_storylets": location_storylets,
+        "location_connections": location_connections,
+        "variables_required": variables_required,
+        "variables_set": dict(variables_set),
+        "dead_end_variables": dead_end_variables,
     }
 
 
 def generate_html_map(storylets, analysis):
     """Generate an HTML visualization of the storylet map."""
-    
+
     html_content = f"""
 <!DOCTYPE html>
 <html>
@@ -210,14 +212,16 @@ def generate_html_map(storylets, analysis):
             <h3>🌍 Location Network</h3>
             <p>Green = Connected locations, Red = Isolated locations</p>
 """
-    
+
     # Show each location and its connections
-    for location in sorted(analysis['locations']):
-        connections = analysis['location_connections'].get(location, set())
-        is_isolated = len(connections) == 0 and not any(location in conns for conns in analysis['location_connections'].values())
-        
+    for location in sorted(analysis["locations"]):
+        connections = analysis["location_connections"].get(location, set())
+        is_isolated = len(connections) == 0 and not any(
+            location in conns for conns in analysis["location_connections"].values()
+        )
+
         node_class = "isolated-location" if is_isolated else "location-node"
-        
+
         html_content += f"""
             <div class="{node_class}">
                 <strong>{location}</strong><br>
@@ -226,18 +230,18 @@ def generate_html_map(storylets, analysis):
                 
                 <div class="storylet-list">
 """
-        
+
         # List storylets in this location
-        for storylet in analysis['location_storylets'][location]:
+        for storylet in analysis["location_storylets"][location]:
             html_content += f'<div class="storylet-item">📖 {storylet["title"]}</div>'
-        
+
         html_content += """
                 </div>
             </div>
 """
 
     # Dead-end variables warning
-    if analysis['dead_end_variables']:
+    if analysis["dead_end_variables"]:
         html_content += f"""
             <div class="dead-vars">
                 <strong>⚠️ Dead-End Variables</strong><br>
@@ -262,39 +266,42 @@ def generate_html_map(storylets, analysis):
 </body>
 </html>
 """
-    
+
     return html_content
 
 
 def main():
     """Generate and display the storylet map."""
     print("🗺️ Generating WorldWeaver Storylet Map...")
-    
+
     # Get data
     storylets = get_storylets_from_db()
     if not storylets:
         print("❌ No storylets found in database!")
         return
-    
+
     # Analyze connections
     analysis = analyze_connections(storylets)
-    
+
     # Generate HTML
     html_content = generate_html_map(storylets, analysis)
-    
+
     # Save to temp file and open
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False, encoding='utf-8') as f:
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".html", delete=False, encoding="utf-8"
+    ) as f:
         f.write(html_content)
         temp_file = f.name
-    
+
     print(f"✅ Map generated: {temp_file}")
     print("🌐 Opening in browser...")
-    
+
     # Open in browser
-    webbrowser.open(f'file://{os.path.abspath(temp_file)}')
-    
+    webbrowser.open(f"file://{os.path.abspath(temp_file)}")
+
     # Print summary
-    print(f"""
+    print(
+        f"""
 🗺️ STORYLET MAP SUMMARY:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📊 {len(storylets)} storylets across {len(analysis['locations'])} locations
@@ -302,7 +309,8 @@ def main():
 ⚠️  {len(analysis['dead_end_variables'])} dead-end variables: {', '.join(analysis['dead_end_variables'])}
 🚨 Navigation issues detected - see browser for visual analysis
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-""")
+"""
+    )
 
 
 if __name__ == "__main__":

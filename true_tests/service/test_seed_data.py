@@ -14,6 +14,7 @@ from src.database import Base
 from src.models import Storylet
 from src.services.seed_data import seed_if_empty
 
+
 @pytest.mark.asyncio
 class TestEmptyDatabaseSeeding:
     """Test suite for empty database seeding functionality (Task: seed-005)."""
@@ -21,10 +22,10 @@ class TestEmptyDatabaseSeeding:
     def setup_method(self):
         """Create a fresh in-memory database for each test."""
         self.engine = create_engine(
-            "sqlite+pysqlite:///:memory:",        # use the pysqlite driver explicitly
+            "sqlite+pysqlite:///:memory:",  # use the pysqlite driver explicitly
             echo=False,
             connect_args={"check_same_thread": False},  # allow cross-thread use
-            poolclass=StaticPool,                       # single shared connection
+            poolclass=StaticPool,  # single shared connection
         )
 
         Base.metadata.create_all(self.engine)
@@ -49,7 +50,7 @@ class TestEmptyDatabaseSeeding:
             text_template="This storylet already exists",
             requires={},
             choices=[{"label": "Continue", "set": {}}],
-            weight=1.0
+            weight=1.0,
         )
         self.db.add(existing_storylet)
         self.db.commit()
@@ -57,18 +58,20 @@ class TestEmptyDatabaseSeeding:
         assert pre_seed_count == 1
         await seed_if_empty(self.db)
         post_seed_count = self.db.query(Storylet).count()
-        assert post_seed_count == 1, "seed_if_empty should not add storylets to non-empty database"
+        assert (
+            post_seed_count == 1
+        ), "seed_if_empty should not add storylets to non-empty database"
 
     async def test_seeded_storylets_have_correct_structure(self):
         await seed_if_empty(self.db)
         storylets = self.db.query(Storylet).all()
         assert len(storylets) == 7, "Should have 7 seeded storylets"
         for storylet in storylets:
-            assert hasattr(storylet, 'title')
-            assert hasattr(storylet, 'text_template')
-            assert hasattr(storylet, 'requires')
-            assert hasattr(storylet, 'choices')
-            assert hasattr(storylet, 'weight')
+            assert hasattr(storylet, "title")
+            assert hasattr(storylet, "text_template")
+            assert hasattr(storylet, "requires")
+            assert hasattr(storylet, "choices")
+            assert hasattr(storylet, "weight")
             assert str(storylet.title).strip() != ""
             assert str(storylet.text_template).strip() != ""
             assert storylet.requires is not None
@@ -85,10 +88,12 @@ class TestEmptyDatabaseSeeding:
             "Hidden Treasure",
             "Glittering Vein",
             "Shaky Beam",
-            "Where's My Pickaxe?"
+            "Where's My Pickaxe?",
         ]
         for expected_title in expected_titles:
-            assert expected_title in storylet_titles, f"Expected storylet '{expected_title}' not found"
+            assert (
+                expected_title in storylet_titles
+            ), f"Expected storylet '{expected_title}' not found"
 
     async def test_seeded_storylets_requirements_and_choices(self):
         await seed_if_empty(self.db)
@@ -97,7 +102,9 @@ class TestEmptyDatabaseSeeding:
         assert isinstance(dark_cave.requires, dict)
         assert isinstance(dark_cave.choices, list)
         assert len(dark_cave.choices) >= 1
-        glittering_vein = self.db.query(Storylet).filter_by(title="Glittering Vein").first()
+        glittering_vein = (
+            self.db.query(Storylet).filter_by(title="Glittering Vein").first()
+        )
         assert glittering_vein is not None
         assert isinstance(glittering_vein.requires, dict)
         assert isinstance(glittering_vein.choices, list)
@@ -108,7 +115,9 @@ class TestEmptyDatabaseSeeding:
         assert first_count == 7
         await seed_if_empty(self.db)
         second_count = self.db.query(Storylet).count()
-        assert second_count == 7, "Multiple calls to seed_if_empty should not add duplicate storylets"
+        assert (
+            second_count == 7
+        ), "Multiple calls to seed_if_empty should not add duplicate storylets"
         await seed_if_empty(self.db)
         third_count = self.db.query(Storylet).count()
         assert third_count == 7, "seed_if_empty should remain idempotent"
@@ -121,7 +130,9 @@ class TestEmptyDatabaseSeeding:
         try:
             count = new_session.query(Storylet).count()
             assert count == 7, "Seeded storylets should persist after session close"
-            storylet = new_session.query(Storylet).filter_by(title="Glittering Vein").first()
+            storylet = (
+                new_session.query(Storylet).filter_by(title="Glittering Vein").first()
+            )
             assert storylet is not None
             assert storylet.text_template is not None
             assert isinstance(storylet.choices, list)
@@ -146,13 +157,23 @@ class TestEmptyDatabaseSeeding:
         storylets = self.db.query(Storylet).all()
         for storylet in storylets:
             choices = storylet.choices
-            assert isinstance(choices, list), f"Choices for '{storylet.title}' should be a list"
-            assert len(choices) > 0, f"Storylet '{storylet.title}' should have at least one choice"
+            assert isinstance(
+                choices, list
+            ), f"Choices for '{storylet.title}' should be a list"
+            assert (
+                len(choices) > 0
+            ), f"Storylet '{storylet.title}' should have at least one choice"
             for choice in choices:
-                assert isinstance(choice, dict), f"Each choice in '{storylet.title}' should be a dict"
+                assert isinstance(
+                    choice, dict
+                ), f"Each choice in '{storylet.title}' should be a dict"
                 has_label = "label" in choice
                 has_text = "text" in choice
-                assert has_label or has_text, f"Choice in '{storylet.title}' missing label/text"
+                assert (
+                    has_label or has_text
+                ), f"Choice in '{storylet.title}' missing label/text"
                 has_set = "set" in choice
                 has_set_vars = "set_vars" in choice
-                assert has_set or has_set_vars, f"Choice in '{storylet.title}' missing set/set_vars"
+                assert (
+                    has_set or has_set_vars
+                ), f"Choice in '{storylet.title}' missing set/set_vars"

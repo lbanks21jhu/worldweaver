@@ -15,6 +15,7 @@ def _api_running() -> bool:
     except Exception:
         return False
 
+
 def test_storylet_analysis():
     """Test the storylet analysis endpoint."""
     print("=== STORYLET ANALYSIS ===")
@@ -22,7 +23,9 @@ def test_storylet_analysis():
         if not _api_running():
             pytest.skip("API not running; skipping analysis test")
         response = requests.get(f"{BASE_URL}/author/storylet-analysis", timeout=10)
-        assert response.status_code == 200, f"Unexpected status: {response.status_code} - {response.text}"
+        assert (
+            response.status_code == 200
+        ), f"Unexpected status: {response.status_code} - {response.text}"
         data = response.json()
         print("Analysis Summary:")
         summary = data.get("summary", {})
@@ -40,6 +43,7 @@ def test_storylet_analysis():
         print(f"Request failed: {e}")
         assert False, f"Analysis request failed: {e}"
 
+
 def test_intelligent_generation():
     """Test the intelligent storylet generation."""
     print("\n=== INTELLIGENT GENERATION ===")
@@ -47,12 +51,16 @@ def test_intelligent_generation():
         payload = {
             "count": 3,
             "themes": ["exploration", "mystery"],
-            "intelligent": True
+            "intelligent": True,
         }
         if not _api_running():
             pytest.skip("API not running; skipping intelligent generation test")
-        response = requests.post(f"{BASE_URL}/author/generate-intelligent", json=payload, timeout=15)
-        assert response.status_code == 200, f"Unexpected status: {response.status_code} - {response.text}"
+        response = requests.post(
+            f"{BASE_URL}/author/generate-intelligent", json=payload, timeout=15
+        )
+        assert (
+            response.status_code == 200
+        ), f"Unexpected status: {response.status_code} - {response.text}"
         data = response.json()
         print(f"Generated {len(data.get('storylets', []))} intelligent storylets:")
         for i, storylet in enumerate(data.get("storylets", []), 1):
@@ -66,6 +74,7 @@ def test_intelligent_generation():
         print(f"Request failed: {e}")
         assert False, f"Intelligent generation failed: {e}"
 
+
 def test_targeted_generation():
     """Test the targeted storylet generation."""
     print("\n=== TARGETED GENERATION ===")
@@ -73,7 +82,9 @@ def test_targeted_generation():
         if not _api_running():
             pytest.skip("API not running; skipping targeted generation test")
         response = requests.post(f"{BASE_URL}/author/generate-targeted", timeout=10)
-        assert response.status_code == 200, f"Unexpected status: {response.status_code} - {response.text}"
+        assert (
+            response.status_code == 200
+        ), f"Unexpected status: {response.status_code} - {response.text}"
         data = response.json()
         if "storylets" in data:
             print(f"Generated {len(data.get('storylets', []))} targeted storylets:")
@@ -88,6 +99,7 @@ def test_targeted_generation():
         print(f"Request failed: {e}")
         assert False, f"Targeted generation failed: {e}"
 
+
 def test_debug_info():
     """Test the debug endpoint."""
     print("\n=== DEBUG INFO ===")
@@ -95,7 +107,9 @@ def test_debug_info():
         if not _api_running():
             pytest.skip("API not running; skipping debug test")
         response = requests.get(f"{BASE_URL}/author/debug", timeout=5)
-        assert response.status_code == 200, f"Unexpected status: {response.status_code} - {response.text}"
+        assert (
+            response.status_code == 200
+        ), f"Unexpected status: {response.status_code} - {response.text}"
         data = response.json()
         print(f"Total storylets: {data.get('total_storylets', 0)}")
         print(f"Available storylets: {data.get('available_storylets', 0)}")
@@ -109,26 +123,37 @@ def test_debug_info():
         print(f"Request failed: {e}")
         assert False, f"Debug info request failed: {e}"
 
+
 if __name__ == "__main__":
     print("Testing Intelligent AI Storylet Generation System")
     print("=" * 50)
-    
+
     # Run all tests
     debug_data = test_debug_info()
     analysis_data = test_storylet_analysis()
     intelligent_data = test_intelligent_generation()
     targeted_data = test_targeted_generation()
-    
+
     print("\n" + "=" * 50)
     print("SUMMARY:")
     if debug_data:
-        print(f"✅ Debug endpoint working - {debug_data.get('total_storylets', 0)} storylets in database")
+        print(
+            f"✅ Debug endpoint working - {debug_data.get('total_storylets', 0)} storylets in database"
+        )
     if analysis_data:
-        print(f"✅ Analysis endpoint working - {len(analysis_data.get('recommendations', []))} recommendations")
+        print(
+            f"✅ Analysis endpoint working - {len(analysis_data.get('recommendations', []))} recommendations"
+        )
     if intelligent_data:
-        print(f"✅ Intelligent generation working - created {len(intelligent_data.get('storylets', []))} storylets")
+        print(
+            f"✅ Intelligent generation working - created {len(intelligent_data.get('storylets', []))} storylets"
+        )
     if targeted_data:
-        if 'storylets' in targeted_data:
-            print(f"✅ Targeted generation working - created {len(targeted_data.get('storylets', []))} storylets")
+        if "storylets" in targeted_data:
+            print(
+                f"✅ Targeted generation working - created {len(targeted_data.get('storylets', []))} storylets"
+            )
         else:
-            print(f"ℹ️ Targeted generation: {targeted_data.get('message', 'No gaps to fill')}")
+            print(
+                f"ℹ️ Targeted generation: {targeted_data.get('message', 'No gaps to fill')}"
+            )

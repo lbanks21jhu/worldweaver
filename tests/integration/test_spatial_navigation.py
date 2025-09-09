@@ -42,7 +42,9 @@ def test_spatial_assign_and_navigate():
         directions = nav["directions"]
 
         # Try moving using JSON body
-        move_dir = _first_accessible_direction(directions) or next(iter(directions.keys()))
+        move_dir = _first_accessible_direction(directions) or next(
+            iter(directions.keys())
+        )
         r = client.post(f"/api/spatial/move/{session_id}", json={"direction": move_dir})
         # Movement might be blocked; we only assert that the request is well-formed
         assert r.status_code in (200, 403, 404), r.text

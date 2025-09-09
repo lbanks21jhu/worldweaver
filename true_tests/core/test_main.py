@@ -12,8 +12,10 @@ def test_health_check_endpoint():
     try:
         response = requests.get(f"{BASE_URL}/health", timeout=3)
     except requests.ConnectionError:
-        pytest.fail("Server is not running at http://localhost:8000. Please start the FastAPI server before running this test.")
-    
+        pytest.fail(
+            "Server is not running at http://localhost:8000. Please start the FastAPI server before running this test."
+        )
+
     assert response.status_code == 200
     data = response.json()
     assert "ok" in data
@@ -36,7 +38,9 @@ def test_health_check_response_content_type():
     try:
         response = requests.get(f"{BASE_URL}/health", timeout=3)
     except requests.ConnectionError:
-        pytest.fail("Server is not running at http://localhost:8000. Please start the FastAPI server before running this test.")
+        pytest.fail(
+            "Server is not running at http://localhost:8000. Please start the FastAPI server before running this test."
+        )
     assert response.headers["content-type"] == "application/json"
 
 
@@ -45,7 +49,9 @@ def test_health_check_consistent_format():
     try:
         responses = [requests.get(f"{BASE_URL}/health", timeout=3) for _ in range(3)]
     except requests.ConnectionError:
-        pytest.fail("Server is not running at http://localhost:8000. Please start the FastAPI server before running this test.")
+        pytest.fail(
+            "Server is not running at http://localhost:8000. Please start the FastAPI server before running this test."
+        )
     for response in responses:
         assert response.status_code == 200
         data = response.json()

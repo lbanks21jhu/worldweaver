@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from ..models import Storylet
 from ..database import SessionLocal
 
+
 def _seed_rows(session: Session) -> None:
     """Seed the database with initial storylets if empty. Runs in the caller's transaction."""
     # If anything here raises, caller's transaction can roll back cleanly.
@@ -39,7 +40,10 @@ def _seed_rows(session: Session) -> None:
             requires={"location": "forest"},
             choices=[
                 {"text": "Enter the hut", "set_vars": {"location": "hut_interior"}},
-                {"text": "Continue through the forest", "set_vars": {"location": "deep_forest"}},
+                {
+                    "text": "Continue through the forest",
+                    "set_vars": {"location": "deep_forest"},
+                },
             ],
             weight=1.0,
         ),
@@ -58,8 +62,14 @@ def _seed_rows(session: Session) -> None:
             text_template="⛏️ {name} spots a glittering vein in the rock. Danger: {danger}. The air smells like iron.",
             requires={"danger": {"lte": 1}},
             choices=[
-                {"label": "Chip at the vein", "set": {"ore": {"inc": 1}, "danger": {"inc": 1}}},
-                {"label": "Mark it for later", "set": {"notes": "Marked a vein", "danger": {"inc": 0}}},
+                {
+                    "label": "Chip at the vein",
+                    "set": {"ore": {"inc": 1}, "danger": {"inc": 1}},
+                },
+                {
+                    "label": "Mark it for later",
+                    "set": {"notes": "Marked a vein", "danger": {"inc": 0}},
+                },
             ],
             weight=2.0,
         ),
@@ -87,29 +97,33 @@ def _seed_rows(session: Session) -> None:
 
     session.add_all(seeds)
     session.flush()
-    
+
+
 def seed_if_empty_sync(session: Session) -> None:
     """Inline, test-freindly; respsect's caller's transaction."""
     _seed_rows(session)
-    
-async def seed_if_empty(session: Optional[Session] = None, *, in_background: bool = False) -> None:
+
+
+async def seed_if_empty(
+    session: Optional[Session] = None, *, in_background: bool = False
+) -> None:
     """
-    Async wrapper. 
+    Async wrapper.
     - if in_background=False: uses provided session inline (test-friendly).
     - if in_background=True: creates its own Session in a worker thread and commits (prod-friendly)
     """
-    
+
     if not in_background:
         assert session is not None, "Provide a Session when running inline."
         return seed_if_empty_sync(session)
-    
+
     import asyncio
-    
+
     def _work():
         # Each background worker gets its own session, then commits, cleans up
         with SessionLocal() as s:
             _seed_rows(s)
             s.commit()
         SessionLocal.remove()
-            
+
     await asyncio.to_thread(_work)

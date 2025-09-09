@@ -18,7 +18,9 @@ def _api_running() -> bool:
 def test_intelligent_generation_direct():
     """Call /author/generate-intelligent with short timeouts; skip if API not running."""
     if not _api_running():
-        pytest.skip("API not running on localhost:8000; skipping direct intelligent generation test")
+        pytest.skip(
+            "API not running on localhost:8000; skipping direct intelligent generation test"
+        )
 
     payload = {
         "count": 2,
@@ -33,7 +35,9 @@ def test_intelligent_generation_direct():
             timeout=(5, 20),  # separate connect/read timeouts
         )
     except requests.exceptions.ReadTimeout:
-        pytest.skip("/author/generate-intelligent timed out (>20s); skipping in fast test mode")
+        pytest.skip(
+            "/author/generate-intelligent timed out (>20s); skipping in fast test mode"
+        )
 
     assert r.status_code == 200, r.text
     result = r.json()

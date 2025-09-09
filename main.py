@@ -29,7 +29,7 @@ async def lifespan(app: FastAPI):
 
 
 # FastAPI Setup
-app = FastAPI(title='DwarfWeave Backend', version="0.1", lifespan=lifespan)
+app = FastAPI(title="DwarfWeave Backend", version="0.1", lifespan=lifespan)
 
 # CORS middleware for local development
 app.add_middleware(
@@ -45,7 +45,7 @@ app.include_router(game.router, prefix="/api", tags=["game"])
 app.include_router(author.router, prefix="/author", tags=["author"])
 
 
-@app.get('/health')
+@app.get("/health")
 def health():
     """Health check endpoint."""
-    return {'ok': True, "time": datetime.now(timezone.utc).isoformat() + "Z"}
+    return {"ok": True, "time": datetime.now(timezone.utc).isoformat() + "Z"}

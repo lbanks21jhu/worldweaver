@@ -7,8 +7,9 @@ from ..database import Base
 
 class Storylet(Base):
     """Model for interactive fiction storylets."""
-    __tablename__ = 'storylets'
-    
+
+    __tablename__ = "storylets"
+
     id = Column(Integer, primary_key=True)
     # Title should be unique to prevent accidental duplicate storylets
     title = Column(String(200), nullable=False, unique=True)
@@ -22,8 +23,9 @@ class Storylet(Base):
 
 class SessionVars(Base):
     """Model for storing session variables."""
-    __tablename__ = 'session_vars'
-    
+
+    __tablename__ = "session_vars"
+
     session_id = Column(String(64), primary_key=True)
     vars = Column(JSON, default=dict)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
