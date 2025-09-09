@@ -7,7 +7,7 @@ and environmental storytelling techniques.
 """
 
 from typing import Any, Dict, List, Optional, Set, Union
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass, field
 from enum import Enum
 import json
@@ -34,7 +34,7 @@ class StateChangeType(Enum):
 class StateChange:
     """Records a single state change for history tracking."""
 
-    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     change_type: StateChangeType = StateChangeType.SET
     variable: str = ""
     old_value: Any = None
@@ -55,7 +55,7 @@ class ItemState:
     properties: Dict[str, Any] = field(default_factory=dict)
     location: Optional[str] = None  # where item is stored
     last_used: Optional[datetime] = None
-    discovered_at: Optional[datetime] = field(default_factory=lambda: datetime.now(UTC))
+    discovered_at: Optional[datetime] = field(default_factory=lambda: datetime.now(timezone.utc))
 
     def can_combine_with(self, other: "ItemState") -> bool:
         """Check if this item can be combined with another."""
@@ -124,7 +124,7 @@ class RelationshipState:
                 setattr(self, attr, current + value)
 
         self.interaction_count += 1
-        self.last_interaction = datetime.now(UTC)
+        self.last_interaction = datetime.now(timezone.utc)
 
         if memory:
             self.add_memory(memory)
@@ -192,7 +192,7 @@ class AdvancedStateManager:
 
         # Performance optimization: cache frequently accessed computations
         self._cached_computations = {}
-        self._cache_expiry = datetime.now(UTC)
+        self._cache_expiry = datetime.now(timezone.utc)
 
     def set_variable(
         self,
@@ -337,7 +337,7 @@ class AdvancedStateManager:
                 )  # Clamp to -100/100
                 setattr(rel, attribute, new_value)
 
-        rel.last_interaction = datetime.now(UTC)
+        rel.last_interaction = datetime.now(timezone.utc)
         rel.interaction_count += 1
 
         if memory:
@@ -485,7 +485,7 @@ class AdvancedStateManager:
         cache_key = "contextual_vars"
         if (
             cache_key in self._cached_computations
-            and datetime.now(UTC) < self._cache_expiry
+            and datetime.now(timezone.utc) < self._cache_expiry
         ):
             return self._cached_computations[cache_key]
 
@@ -526,14 +526,14 @@ class AdvancedStateManager:
 
         # Cache the result
         self._cached_computations[cache_key] = context
-        self._cache_expiry = datetime.now(UTC) + timedelta(seconds=30)
+        self._cache_expiry = datetime.now(timezone.utc) + timedelta(seconds=30)
 
         return context
 
     def _invalidate_cache(self):
         """Clear cached computations when state changes."""
         self._cached_computations.clear()
-        self._cache_expiry = datetime.now(UTC)
+        self._cache_expiry = datetime.now(timezone.utc)
 
     def get_state_summary(self) -> Dict[str, Any]:
         """Get a comprehensive summary of current state."""
@@ -582,7 +582,7 @@ class AdvancedStateManager:
                 [
                     c
                     for c in self.change_history
-                    if c.timestamp > datetime.now(UTC) - timedelta(minutes=5)
+                    if c.timestamp > datetime.now(timezone.utc) - timedelta(minutes=5)
                 ]
             ),
         }
@@ -628,7 +628,7 @@ class AdvancedStateManager:
         for change_data in state_data.get("change_history", []):
             parsed_ts = datetime.fromisoformat(change_data["timestamp"])
             if parsed_ts.tzinfo is None:
-                parsed_ts = parsed_ts.replace(tzinfo=UTC)
+                parsed_ts = parsed_ts.replace(tzinfo=timezone.utc)
             change_data["timestamp"] = parsed_ts
             change_data["change_type"] = StateChangeType(change_data["change_type"])
             self.change_history.append(StateChange(**change_data))
