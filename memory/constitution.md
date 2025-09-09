@@ -1,50 +1,34 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+# Project Constitution
 
-## Core Principles
+*In the beginning, there was only code and chaos. From tangled imports and silent failures, a spark emerged — the dream of a world both whimsical and robust. This constitution is our map, our spellbook, and our tavern rules etched on the wall. Here we pledge to build together: bravely, curiously, and with just enough mischief to keep the dragons interested.*
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+## 1. Purpose & Scope
+This project exists to weave stories, code, and a little magic into an evolving gameworld. The constitution covers everything from APIs and databases to storylets and spatial maps, ensuring no feature is born without intention and no idea is left wandering the void. Out of scope: silent failures, untested features, and joyless bureaucracy.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+## 2. Roles & Responsibilities
+- **Contributors**: Brave adventurers who propose specs, draft storylets, or submit pull requests. They shape the world with ideas and code.  
+- **Reviewers**: Guardians of quality, checking for tests, consistency, and accessibility. They wield the “LGTM” with discretion.  
+- **Maintainers / Leads**: Lorekeepers and builders of bridges. They merge, steer direction, and occasionally remind everyone that dragons are still in scope.  
+- **AI Agents**: Copilot, Claude, Gemini, and friends are clever familiars—helpful, prolific, but ultimately not in charge. They whisper suggestions, not decrees.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+## 3. Decision-Making Process
+Consensus is preferred; collaboration is celebrated. If consensus falters, majority rules. In the event of a tie, the maintainers flip a metaphorical coin (or consult the nearest oracular dice). Escalation should be rare, like summoning a wizard—used wisely, and only when the village is truly on fire.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+## 4. Workflow Integration
+- `/specify`, `/plan`, and `/tasks` commands are the enchanted scrolls guiding work.  
+- Branches sprout from `main` like saplings; pull requests are the pruning and shaping.  
+- Every change must be tested and reviewed before release—because gremlins love untested code.  
+- Issues are tracked openly; dragons slain are recorded in changelogs.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+## 5. Amendments & Versioning
+This constitution is a living artifact. Amendments are proposed via PR, discussed in good faith, and merged with consensus (or majority). Each amendment leaves a footprint in the changelog, so future travelers know the path we’ve taken.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+## 6. Ethics & Values
+- Inclusivity, openness, and respect are the bedrock.  
+- Testing is sacred; silent failures are heresy.  
+- No duplicate storylets, no broken navigation, no destructive changes without explicit ritual (confirmation).  
+- User experience is paramount—players should feel like explorers, not bug testers.  
+- Humor is welcome; cruelty is not.  
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
-
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
-
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
-
-## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
-
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
-
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+## 7. Acknowledgments
+To the open-source community, interactive fiction pioneers, and whimsical coders everywhere: thank you. Twine, SugarCube, Harlowe, Porpentine, OpenAI, Spec Kit—all part of our lineage. May this project honor your gifts and add a dash of our own.
