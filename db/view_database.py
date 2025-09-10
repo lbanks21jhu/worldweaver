@@ -16,7 +16,7 @@ def view_storylets():
     cursor = conn.cursor()
 
     cursor.execute(
-        "SELECT id, title, text_template, requires, choices, weight FROM storylets ORDER BY id"
+        "SELECT id, title, text_template, requires, choices, weight, position FROM storylets ORDER BY id"
     )
     storylets = cursor.fetchall()
 
@@ -24,7 +24,7 @@ def view_storylets():
     print("=" * 80)
 
     for storylet in storylets:
-        id, title, text_template, requires, choices, weight = storylet
+        id, title, text_template, requires, choices, weight, position = storylet
 
         print(f"\n🆔 ID: {id}")
         print(f"📖 Title: {title}")
@@ -32,6 +32,13 @@ def view_storylets():
             f"📝 Text: {text_template[:100]}{'...' if len(text_template) > 100 else ''}"
         )
         print(f"⚖️  Weight: {weight}")
+
+        # Parse and display position
+        try:
+            pos_data = json.loads(position) if position else {}
+            print(f"📍 Position: {pos_data}")
+        except:
+            print(f"📍 Position: {position}")
 
         # Parse and display requirements
         try:

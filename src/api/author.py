@@ -4,7 +4,7 @@ import os
 import json
 import logging
 import traceback
-from typing import Dict, Any, cast
+from typing import Dict, Any, Optional, cast
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -22,27 +22,134 @@ from ..services.game_logic import auto_populate_storylets
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import func
 
+def save_storylets_with_postprocessing(
+    db: Session,
+    storylets: list,
+    improvement_trigger: str = "",
+    assign_spatial: bool = True,
+    spatial_ids: Optional[list] = None,
+) -> dict:
+    """
+    Save storylets to DB, assign spatial positions, and run auto-improvement.
+
+    Args:
+        db: SQLAlchemy session
+        storylets: List of dicts with storylet data
+        improvement_trigger: String describing the operation for auto-improvement
+        assign_spatial: Whether to assign spatial positions
+        spatial_ids: Optional list of storylet IDs for spatial assignment
+
+    Returns:
+        Dict with results and improvement info
+    """
+    from ..services.spatial_navigator import SpatialNavigator
+    from ..services.auto_improvement import (
+        auto_improve_storylets,
+        should_run_auto_improvement,
+        get_improvement_summary,
+    )
+    from sqlalchemy.exc import IntegrityError
+    from sqlalchemy import func
+    from ..models import Storylet
+
+    created_storylets = []
+    for data in storylets:
+        # Validate required fields
+        if not all(
+            key in data
+            for key in ["title", "text_template", "requires", "choices", "weight"]
+        ):
+            continue
+        normalized = (data.get("title") or "").strip()
+        exists = (
+            db.query(Storylet)
+            .filter(func.lower(Storylet.title) == func.lower(normalized))
+            .first()
+        )
+        if exists:
+            continue
+        storylet = Storylet(
+            title=normalized,
+            text_template=data["text_template"],
+            requires=data["requires"],
+            choices=data["choices"],
+            weight=float(data["weight"]),
+        )
+        db.add(storylet)
+        try:
+            db.flush()
+        except IntegrityError:
+            db.rollback()
+            continue
+        created_storylets.append(
+            {
+                "title": storylet.title,
+                "text_template": storylet.text_template,
+                "requires": data["requires"],
+                "choices": data["choices"],
+                "weight": storylet.weight,
+            }
+        )
+    db.commit()
+
+    # Assign spatial positions
+    updates = 0
+    if assign_spatial and created_storylets:
+        new_storylet_ids = []
+        for storylet in db.query(Storylet).filter(
+            Storylet.title.in_([s["title"] for s in created_storylets])
+        ):
+            new_storylet_ids.append(storylet.id)
+        updates = SpatialNavigator.auto_assign_coordinates(
+            db, spatial_ids or new_storylet_ids
+        )
+        if updates > 0:
+            print(f"📍 Auto-assigned coordinates to {updates} storylets")
+
+    # Auto-improve storylets
+    improvement_results = None
+    if should_run_auto_improvement(len(created_storylets), improvement_trigger):
+        improvement_results = auto_improve_storylets(
+            db=db,
+            trigger=f"{improvement_trigger} ({len(created_storylets)} storylets)",
+            run_smoothing=True,
+            run_deepening=True,
+        )
+
+    return {
+        "added": len(created_storylets),
+        "storylets": created_storylets,
+        "spatial_updates": updates,
+        "auto_improvements": get_improvement_summary(improvement_results)
+        if improvement_results
+        else None,
+        "improvement_details": improvement_results,
+    }
+
+# =========================
+
 router = APIRouter()
 
-
 @router.post("/suggest", response_model=SuggestResp)
-def author_suggest(payload: SuggestReq):
-    """Generate storylet suggestions using LLM."""
+def author_suggest(
+    payload: SuggestReq, commit: bool = False, db: Session = Depends(get_db)
+):
+    """Generate storylet suggestions using LLM.
+    
     # bible can include allowed qualities/items, setting details, etc. so the model stays on rails
     # example bible structure you can POST:
-    # example_bible = {
-    #     "allowed_qualities": ["brave", "smart", "kind"],
-    #     "allowed_items": ["sword", "shield", "potion"],
-    #     "setting_details": {
-    #         "location": "forest",
-    #         "time_of_day": "morning"
-    #     }
-    # }
-
+    example_bible = {
+        "allowed_qualities": ["brave", "smart", "kind"],
+        "allowed_items": ["sword", "shield", "potion"],
+        "setting_details": {
+            "location": "forest",
+            "time_of_day": "morning"
+        }
+    }
+    
+    """
     try:
-        raw = llm_suggest_storylets(
-            payload.n, payload.themes or [], payload.bible or {}
-        )
+        raw = llm_suggest_storylets(payload.n, payload.themes or [], payload.bible or {})
         items = [StoryletIn(**r) for r in (raw or [])]
 
         # extreme fallback if model returns nothing
@@ -56,6 +163,30 @@ def author_suggest(payload: SuggestReq):
                     weight=1.0,
                 )
             ]
+        # If caller requested commit, save the generated storylets and run postprocessing
+        if commit and items:
+            # Prepare plain dicts for the helper
+            storylet_dicts = [
+                {
+                    "title": s.title,
+                    "text_template": s.text_template,
+                    "requires": s.requires,
+                    "choices": s.choices,
+                    "weight": s.weight,
+                }
+                for s in items
+            ]
+            try:
+                save_result = save_storylets_with_postprocessing(
+                    db=db,
+                    storylets=storylet_dicts,
+                    improvement_trigger="author-suggest",
+                    assign_spatial=True,
+                )
+                logging.info(f"author_suggest: saved {save_result.get('added', 0)} storylets")
+            except Exception:
+                logging.exception("Failed to save suggested storylets")
+
         return SuggestResp(storylets=items)
     except Exception as e:
         logging.exception("Error in LLM suggest")
@@ -69,74 +200,9 @@ def author_suggest(payload: SuggestReq):
         )
 
 
-@router.post("/commit")
-def author_commit(payload: SuggestResp, db: Session = Depends(get_db)):
-    """Commit suggested storylets to the database."""
-    count = 0
-    for s in payload.storylets:
-        # Normalize title for comparison
-        normalized = (s.title or "").strip()
-        exists = (
-            db.query(Storylet)
-            .filter(func.lower(Storylet.title) == func.lower(normalized))
-            .first()
-        )
-        if exists:
-            # Skip duplicate
-            continue
-        row = Storylet(
-            title=normalized,
-            text_template=s.text_template,
-            requires=s.requires,
-            choices=s.choices,
-            weight=s.weight,
-        )
-        db.add(row)
-        try:
-            db.flush()
-        except IntegrityError:
-            # Another thread/process inserted a row with same title; skip it
-            db.rollback()
-            continue
-        count += 1
-    db.commit()
-
-    # Auto-assign spatial coordinates to newly committed storylets
-    if count > 0:
-        from ..services.spatial_navigator import SpatialNavigator
-
-        new_storylet_ids = []
-        for storylet in db.query(Storylet).filter(
-            Storylet.title.in_([s.title for s in payload.storylets])
-        ):
-            new_storylet_ids.append(storylet.id)
-
-        updates = SpatialNavigator.auto_assign_coordinates(db, new_storylet_ids)
-        if updates > 0:
-            print(f"📍 Auto-assigned coordinates to {updates} committed storylets")
-
-    # Auto-improve storylets after adding new ones
-    from ..services.auto_improvement import (
-        auto_improve_storylets,
-        should_run_auto_improvement,
-        get_improvement_summary,
-    )
-
-    if should_run_auto_improvement(count, "author-commit"):
-        improvement_results = auto_improve_storylets(
-            db=db,
-            trigger=f"author-commit ({count} storylets)",
-            run_smoothing=True,
-            run_deepening=True,
-        )
-
-        return {
-            "added": count,
-            "auto_improvements": get_improvement_summary(improvement_results),
-            "improvement_details": improvement_results,
-        }
-
-    return {"added": count}
+# NOTE: The `/author/commit` endpoint was removed in favor of
+# `POST /author/suggest?commit=1` which will save suggested storylets and
+# run spatial assignment + auto-improvement via `save_storylets_with_postprocessing`.
 
 
 @router.post("/populate")
@@ -249,92 +315,40 @@ def generate_intelligent_storylets(
         if not storylets:
             return {"error": "No storylets generated"}
 
-        # Save to database
-        created_storylets = []
+        # Normalize and delegate saving/postprocessing to helper
+        storylet_dicts = []
         for data in storylets:
-            # Validate required fields
             if not all(
                 key in data
                 for key in ["title", "text_template", "requires", "choices", "weight"]
             ):
                 continue
-            # Skip duplicates by title (case-insensitive)
-            normalized = (data.get("title") or "").strip()
-            exists = (
-                db.query(Storylet)
-                .filter(func.lower(Storylet.title) == func.lower(normalized))
-                .first()
-            )
-            if exists:
-                continue
-            storylet = Storylet(
-                title=normalized,
-                text_template=data["text_template"],
-                requires=data["requires"],
-                choices=data["choices"],
-                weight=float(data["weight"]),
-            )
-            db.add(storylet)
-            try:
-                db.flush()
-            except IntegrityError:
-                db.rollback()
-                continue
-            created_storylets.append(
+            storylet_dicts.append(
                 {
-                    "title": storylet.title,
-                    "text_template": storylet.text_template,
+                    "title": data["title"],
+                    "text_template": data["text_template"],
                     "requires": data["requires"],
                     "choices": data["choices"],
-                    "weight": storylet.weight,
+                    "weight": float(data["weight"]),
                 }
             )
 
-        db.commit()
-
-        # Auto-assign spatial coordinates to newly created storylets
-        if created_storylets:
-            from ..services.spatial_navigator import SpatialNavigator
-
-            new_storylet_ids = []
-            for storylet in db.query(Storylet).filter(
-                Storylet.title.in_([s["title"] for s in created_storylets])
-            ):
-                new_storylet_ids.append(storylet.id)
-
-            updates = SpatialNavigator.auto_assign_coordinates(db, new_storylet_ids)
-            if updates > 0:
-                print(
-                    f"📍 Auto-assigned coordinates to {updates} intelligent storylets"
-                )
-
-        # Auto-improve storylets after intelligent generation
-        from ..services.auto_improvement import (
-            auto_improve_storylets,
-            should_run_auto_improvement,
-            get_improvement_summary,
+        save_result = save_storylets_with_postprocessing(
+            db=db,
+            storylets=storylet_dicts,
+            improvement_trigger="intelligent-generation",
+            assign_spatial=True,
         )
 
         base_response = {
-            "message": f"Generated {len(created_storylets)} intelligent storylets",
-            "storylets": created_storylets,
+            "message": f"Generated {save_result.get('added', 0)} intelligent storylets",
+            "storylets": save_result.get("storylets", []),
             "ai_context": "Used storylet analysis to create targeted, coherent content",
         }
 
-        if should_run_auto_improvement(
-            len(created_storylets), "intelligent-generation"
-        ):
-            improvement_results = auto_improve_storylets(
-                db=db,
-                trigger=f"intelligent-generation ({len(created_storylets)} storylets)",
-                run_smoothing=True,
-                run_deepening=True,
-            )
-
-            base_response["auto_improvements"] = get_improvement_summary(
-                improvement_results
-            )
-            base_response["improvement_details"] = improvement_results
+        if save_result.get("auto_improvements"):
+            base_response["auto_improvements"] = save_result.get("auto_improvements")
+            base_response["improvement_details"] = save_result.get("improvement_details")
 
         return base_response
 
@@ -412,88 +426,40 @@ def generate_targeted_storylets(db: Session = Depends(get_db)):
                 "message": "No critical gaps identified - storylet ecosystem is healthy!"
             }
 
-        # Save to database
-        created_storylets = []
+        # Normalize and delegate saving/postprocessing to helper
+        storylet_dicts = []
         for data in storylets:
-            # Validate required fields
             if not all(
                 key in data
                 for key in ["title", "text_template", "requires", "choices", "weight"]
             ):
                 continue
-            # Skip duplicates by title (case-insensitive)
-            normalized = (data.get("title") or "").strip()
-            exists = (
-                db.query(Storylet)
-                .filter(func.lower(Storylet.title) == func.lower(normalized))
-                .first()
-            )
-            if exists:
-                continue
-            storylet = Storylet(
-                title=normalized,
-                text_template=data["text_template"],
-                requires=data["requires"],
-                choices=data["choices"],
-                weight=float(data["weight"]),
-            )
-            db.add(storylet)
-            try:
-                db.flush()
-            except IntegrityError:
-                db.rollback()
-                continue
-            created_storylets.append(
+            storylet_dicts.append(
                 {
-                    "title": storylet.title,
-                    "text_template": storylet.text_template,
+                    "title": data["title"],
+                    "text_template": data["text_template"],
                     "requires": data["requires"],
                     "choices": data["choices"],
-                    "weight": storylet.weight,
+                    "weight": float(data["weight"]),
                 }
             )
 
-        db.commit()
-
-        # Auto-assign spatial coordinates to newly created storylets
-        if created_storylets:
-            from ..services.spatial_navigator import SpatialNavigator
-
-            new_storylet_ids = []
-            for storylet in db.query(Storylet).filter(
-                Storylet.title.in_([s["title"] for s in created_storylets])
-            ):
-                new_storylet_ids.append(storylet.id)
-
-            updates = SpatialNavigator.auto_assign_coordinates(db, new_storylet_ids)
-            if updates > 0:
-                print(f"📍 Auto-assigned coordinates to {updates} targeted storylets")
-
-        # Auto-improve storylets after targeted generation
-        from ..services.auto_improvement import (
-            auto_improve_storylets,
-            should_run_auto_improvement,
-            get_improvement_summary,
+        save_result = save_storylets_with_postprocessing(
+            db=db,
+            storylets=storylet_dicts,
+            improvement_trigger="targeted-generation",
+            assign_spatial=True,
         )
 
         base_response = {
-            "message": f"Generated {len(created_storylets)} targeted storylets",
-            "storylets": created_storylets,
+            "message": f"Generated {save_result.get('added', 0)} targeted storylets",
+            "storylets": save_result.get("storylets", []),
             "targeting_info": "These storylets specifically address connectivity gaps and flow issues",
         }
 
-        if should_run_auto_improvement(len(created_storylets), "targeted-generation"):
-            improvement_results = auto_improve_storylets(
-                db=db,
-                trigger=f"targeted-generation ({len(created_storylets)} storylets)",
-                run_smoothing=True,
-                run_deepening=True,
-            )
-
-            base_response["auto_improvements"] = get_improvement_summary(
-                improvement_results
-            )
-            base_response["improvement_details"] = improvement_results
+        if save_result.get("auto_improvements"):
+            base_response["auto_improvements"] = save_result.get("auto_improvements")
+            base_response["improvement_details"] = save_result.get("improvement_details")
 
         return base_response
 
@@ -525,40 +491,28 @@ def generate_world_from_description(
             count=world_description.storylet_count,
         )
 
-        # Add to database
-        created_storylets = []
+        # Normalize generated storylets to helper format
+        storylet_dicts = []
         for storylet_data in storylets:
-            # Normalize title and skip duplicates early
-            normalized = (storylet_data.get("title") or "").strip()
-            exists = (
-                db.query(Storylet)
-                .filter(func.lower(Storylet.title) == func.lower(normalized))
-                .first()
-            )
-            if exists:
+            if not storylet_data.get("title"):
                 continue
-            storylet = Storylet(
-                title=normalized,
-                text_template=storylet_data["text"],
-                choices=storylet_data["choices"],
-                requires=storylet_data.get("requires", {}),
-                weight=storylet_data.get("weight", 1.0),
-            )
-            db.add(storylet)
-            try:
-                db.flush()
-            except IntegrityError:
-                db.rollback()
-                continue
-            created_storylets.append(
+            storylet_dicts.append(
                 {
-                    "title": storylet.title,
-                    "text_template": storylet.text_template,
+                    "title": storylet_data.get("title"),
+                    "text_template": storylet_data.get("text"),
+                    "choices": storylet_data.get("choices", []),
                     "requires": storylet_data.get("requires", {}),
-                    "choices": storylet_data["choices"],
-                    "weight": storylet.weight,
+                    "weight": float(storylet_data.get("weight", 1.0)),
                 }
             )
+
+        # Save generated storylets to DB (delay spatial assignment so we can place them with the world layout)
+        save_result = save_storylets_with_postprocessing(
+            db=db, storylets=storylet_dicts, improvement_trigger="", assign_spatial=False
+        )
+
+        # Use the helper's created storylets for later spatial placement
+        created_storylets = save_result.get("storylets", [])
 
         # Analyze the generated world to create a perfect starting storylet
         generated_locations = set()
