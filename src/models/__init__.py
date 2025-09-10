@@ -17,8 +17,7 @@ class Storylet(Base):
     requires = Column(JSON, default=dict)
     choices = Column(JSON, default=list)
     weight = Column(Float, default=1.0)
-    spatial_x = Column(Integer, nullable=True)  # X coordinate for spatial navigation
-    spatial_y = Column(Integer, nullable=True)  # Y coordinate for spatial navigation
+    position = Column(JSON, default=lambda: {"x": 0, "y": 0})  # Position for spatial navigation
 
 
 class SessionVars(Base):

@@ -72,32 +72,26 @@ class SpatialNavigator:
         from .location_mapper import LocationMapper
 
         # Build query based on whether specific IDs are provided
+        # Now, we check for position field being null or missing
         if storylet_ids:
-            # Process specific storylets
-            id_placeholders = ",".join(
-                [":id" + str(i) for i in range(len(storylet_ids))]
-            )
+            id_placeholders = ",".join([":id" + str(i) for i in range(len(storylet_ids))])
             query = f"""
-                SELECT id, title, requires 
+                SELECT id, title, requires, position 
                 FROM storylets 
                 WHERE id IN ({id_placeholders})
-                AND (spatial_x IS NULL OR spatial_y IS NULL) 
+                AND (position IS NULL OR json_type(position, '$.x') IS NULL OR json_type(position, '$.y') IS NULL)
                 AND requires IS NOT NULL 
                 AND requires != '{{}}'
             """
-            # Create parameter dict
-            params = {
-                f"id{i}": storylet_id for i, storylet_id in enumerate(storylet_ids)
-            }
+            params = {f"id{i}": storylet_id for i, storylet_id in enumerate(storylet_ids)}
             result = db_session.execute(text(query), params)
         else:
-            # Process all storylets without coordinates
             result = db_session.execute(
                 text(
                     """
-                SELECT id, title, requires 
+                SELECT id, title, requires, position 
                 FROM storylets 
-                WHERE (spatial_x IS NULL OR spatial_y IS NULL) 
+                WHERE (position IS NULL OR json_type(position, '$.x') IS NULL OR json_type(position, '$.y') IS NULL)
                 AND requires IS NOT NULL 
                 AND requires != '{}'
             """
@@ -106,12 +100,11 @@ class SpatialNavigator:
 
         storylets_to_fix = []
         for row in result.fetchall():
-            id_val, title, requires_json = row
+            id_val, title, requires_json, position_json = row
             try:
                 requires = json.loads(requires_json) if requires_json else {}
             except:
                 requires = {}
-
             location = requires.get("location")
             if location:
                 storylets_to_fix.append(
@@ -119,8 +112,9 @@ class SpatialNavigator:
                         "id": id_val,
                         "title": title,
                         "requires": requires,
-                        "choices": [],  # We don't need choices for coordinate assignment
+                        "choices": [],
                         "weight": 1.0,
+                        "position": json.loads(position_json) if position_json else None,
                     }
                 )
 
@@ -134,21 +128,19 @@ class SpatialNavigator:
         # Update database with coordinates
         updates_made = 0
         for storylet_data in storylets_with_coords:
-            if "spatial_x" in storylet_data and "spatial_y" in storylet_data:
-                x, y = storylet_data["spatial_x"], storylet_data["spatial_y"]
+            if "position" in storylet_data and storylet_data["position"]:
+                position = storylet_data["position"]
                 storylet_id = storylet_data["id"]
-
                 db_session.execute(
                     text(
                         """
                     UPDATE storylets 
-                    SET spatial_x = :x, spatial_y = :y 
+                    SET position = :position 
                     WHERE id = :id
                 """
                     ),
-                    {"x": x, "y": y, "id": storylet_id},
+                    {"position": json.dumps(position), "id": storylet_id},
                 )
-
                 updates_made += 1
 
         if updates_made > 0:
@@ -174,18 +166,23 @@ class SpatialNavigator:
             result = self.db.execute(
                 text(
                     """
-                SELECT id, spatial_x, spatial_y 
+                SELECT id, position 
                 FROM storylets 
-                WHERE spatial_x IS NOT NULL AND spatial_y IS NOT NULL
+                WHERE position IS NOT NULL
             """
                 )
             )
 
             for row in result.fetchall():
-                storylet_id, x, y = row
-                pos = Position(x, y)
-                self.storylet_positions[storylet_id] = pos
-                self.position_storylets[pos] = storylet_id
+                storylet_id, position_json = row
+                try:
+                    position = json.loads(position_json) if position_json else None
+                except:
+                    position = None
+                if position and "x" in position and "y" in position:
+                    pos = Position(position["x"], position["y"])
+                    self.storylet_positions[storylet_id] = pos
+                    self.position_storylets[pos] = storylet_id
 
         except Exception as e:
             print(f"⚠️ Warning: Could not load spatial positions: {e}")
@@ -195,31 +192,8 @@ class SpatialNavigator:
 
     def _ensure_spatial_columns(self):
         """Ensure the database has spatial columns."""
-        try:
-            self.db.execute(
-                text(
-                    """
-                ALTER TABLE storylets 
-                ADD COLUMN spatial_x INTEGER DEFAULT NULL
-            """
-                )
-            )
-        except:
-            pass  # Column probably already exists
-
-        try:
-            self.db.execute(
-                text(
-                    """
-                ALTER TABLE storylets 
-                ADD COLUMN spatial_y INTEGER DEFAULT NULL
-            """
-                )
-            )
-        except:
-            pass  # Column probably already exists
-
-        self.db.commit()
+    # No-op: position is now a JSON field, no need to add columns
+    pass
 
     def assign_spatial_positions(
         self, storylets: List[Dict[str, Any]], start_pos: Optional[Position] = None

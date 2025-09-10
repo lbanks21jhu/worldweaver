@@ -18,7 +18,7 @@ def get_storylets_from_db():
 
     cursor.execute(
         """
-        SELECT id, title, text_template, requires, choices, weight 
+        SELECT id, title, text_template, requires, choices, weight, position 
         FROM storylets
     """
     )
@@ -32,6 +32,7 @@ def get_storylets_from_db():
             "requires": json.loads(row[3]) if row[3] else {},
             "choices": json.loads(row[4]) if row[4] else [],
             "weight": row[5],
+            "position": json.loads(row[6]) if row[6] else {"x": 0, "y": 0},
         }
         storylets.append(storylet)
 
@@ -41,45 +42,35 @@ def get_storylets_from_db():
 
 def analyze_connections(storylets):
     """Analyze location connections and variable flow."""
-    locations = set()
-    location_storylets = defaultdict(list)
-    location_connections = defaultdict(set)
+    positions = set()
+    position_storylets = defaultdict(list)
     variables_required = set()
     variables_set = Counter()
     dead_end_variables = set()
 
-    # Extract locations and analyze variable flow
+    # Extract positions and analyze variable flow
     for storylet in storylets:
-        # Get location requirement
-        location = storylet["requires"].get("location", "No Location")
-        locations.add(location)
-        location_storylets[location].append(storylet)
+        pos = (storylet["position"].get("x", 0), storylet["position"].get("y", 0))
+        positions.add(pos)
+        position_storylets[pos].append(storylet)
 
         # Track required variables
         for var in storylet["requires"].keys():
             variables_required.add(var)
 
-        # Analyze choices for location changes and variable setting
+        # Analyze choices for variable setting (location changes are now position changes)
         for choice in storylet["choices"]:
             choice_sets = choice.get("set", {})
-
-            # Track variables being set
             for var, value in choice_sets.items():
                 variables_set[var] += 1
-
-            # Track location connections
-            new_location = choice_sets.get("location")
-            if new_location and new_location != location:
-                location_connections[location].add(new_location)
 
     # Find dead-end variables (set but never required)
     all_set_vars = set(variables_set.keys())
     dead_end_variables = all_set_vars - variables_required
 
     return {
-        "locations": locations,
-        "location_storylets": location_storylets,
-        "location_connections": location_connections,
+        "positions": positions,
+        "position_storylets": position_storylets,
         "variables_required": variables_required,
         "variables_set": dict(variables_set),
         "dead_end_variables": dead_end_variables,
@@ -187,8 +178,7 @@ def generate_html_map(storylets, analysis):
             <div class="stat-box">
                 <div class="stat-title">📊 Overview</div>
                 <div>Total Storylets: {len(storylets)}</div>
-                <div>Total Locations: {len(analysis['locations'])}</div>
-                <div>Location Connections: {sum(len(conns) for conns in analysis['location_connections'].values())}</div>
+                <div>Total Unique Positions: {len(analysis['positions'])}</div>
             </div>
             
             <div class="stat-box">
@@ -197,48 +187,38 @@ def generate_html_map(storylets, analysis):
                 <div>Variables Set: {len(analysis['variables_set'])}</div>
                 <div>Dead-End Variables: {len(analysis['dead_end_variables'])}</div>
             </div>
-            
-            <div class="stat-box">
-                <div class="stat-title">🚨 Navigation Issues</div>
-                <div>Isolated Locations: {len([loc for loc in analysis['locations'] if loc not in analysis['location_connections'] and not any(loc in conns for conns in analysis['location_connections'].values())])}</div>
-                <div>One-Way Connections: {sum(1 for conns in analysis['location_connections'].values() for conn in conns if conn not in analysis['location_connections'])}</div>
-            </div>
         </div>
 """
 
-    # Location Graph
+    # Position Grid Visualization
     html_content += """
         <div class="location-graph">
-            <h3>🌍 Location Network</h3>
-            <p>Green = Connected locations, Red = Isolated locations</p>
-"""
+            <h3>🗺️ Storylet Position Grid</h3>
+            <p>Each storylet is plotted at its (x, y) position.</p>
+            <div id="grid" style="position:relative; width:800px; height:600px; background:rgba(255,255,255,0.05); border-radius:10px; border:1px solid #fff;">
+    """
 
-    # Show each location and its connections
-    for location in sorted(analysis["locations"]):
-        connections = analysis["location_connections"].get(location, set())
-        is_isolated = len(connections) == 0 and not any(
-            location in conns for conns in analysis["location_connections"].values()
-        )
+    # Find grid bounds
+    xs = [pos[0] for pos in analysis["positions"]]
+    ys = [pos[1] for pos in analysis["positions"]]
+    min_x, max_x = min(xs), max(xs)
+    min_y, max_y = min(ys), max(ys)
+    range_x = max_x - min_x if max_x > min_x else 1
+    range_y = max_y - min_y if max_y > min_y else 1
 
-        node_class = "isolated-location" if is_isolated else "location-node"
+    # Plot each storylet at its position
+    for pos, storylets_at_pos in analysis["position_storylets"].items():
+        grid_x = int(700 * (pos[0] - min_x) / range_x) + 50
+        grid_y = int(500 * (pos[1] - min_y) / range_y) + 50
+        for storylet in storylets_at_pos:
+            html_content += f'<div style="position:absolute; left:{grid_x}px; top:{grid_y}px; min-width:120px; background:rgba(46,204,113,0.2); border:2px solid #2ecc71; border-radius:8px; padding:10px; text-align:center; color:#fff;">'
+            html_content += f'<strong>{storylet["title"]}</strong><br>(x={pos[0]}, y={pos[1]})'
+            html_content += '</div>'
 
-        html_content += f"""
-            <div class="{node_class}">
-                <strong>{location}</strong><br>
-                <small>{len(analysis['location_storylets'][location])} storylets</small>
-                {f'<br><span class="connection-arrow">→ {", ".join(connections)}</span>' if connections else ''}
-                
-                <div class="storylet-list">
-"""
-
-        # List storylets in this location
-        for storylet in analysis["location_storylets"][location]:
-            html_content += f'<div class="storylet-item">📖 {storylet["title"]}</div>'
-
-        html_content += """
-                </div>
+    html_content += """
             </div>
-"""
+        </div>
+    """
 
     # Dead-end variables warning
     if analysis["dead_end_variables"]:
@@ -294,20 +274,15 @@ def main():
         temp_file = f.name
 
     print(f"✅ Map generated: {temp_file}")
-    print("🌐 Opening in browser...")
-
-    # Open in browser
-    webbrowser.open(f"file://{os.path.abspath(temp_file)}")
+    # Browser auto-open removed per user request
 
     # Print summary
     print(
         f"""
 🗺️ STORYLET MAP SUMMARY:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📊 {len(storylets)} storylets across {len(analysis['locations'])} locations
-🔗 {sum(len(conns) for conns in analysis['location_connections'].values())} location connections
+📊 {len(storylets)} storylets across {len(analysis['positions'])} unique positions
 ⚠️  {len(analysis['dead_end_variables'])} dead-end variables: {', '.join(analysis['dead_end_variables'])}
-🚨 Navigation issues detected - see browser for visual analysis
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
     )

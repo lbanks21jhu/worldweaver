@@ -223,9 +223,9 @@ def _seed_if_test_db():
 
         if os.getenv("DW_DB_PATH") == "test_database.db":
             db = SessionLocal()
-            from ..services.seed_data import seed_if_empty
+            from ..services.seed_data import seed_if_empty_sync
 
-            seed_if_empty(db)
+            seed_if_empty_sync(db)
             db.close()
     except Exception:
         pass
@@ -237,12 +237,12 @@ _seed_if_test_db()
 @router.post("/cleanup-sessions")
 def cleanup_old_sessions(db: Session = Depends(get_db)):
     """Clean up sessions older than 24 hours."""
-    from datetime import datetime, timedelta, UTC
+    from datetime import datetime, timedelta, timezone
     from sqlalchemy import text
 
     try:
         # Calculate cutoff time (24 hours ago)
-        cutoff_time = datetime.now(UTC) - timedelta(hours=24)
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=24)
 
         # Get session IDs that will be deleted (for precise cache cleanup)
         sessions_to_delete_result = db.execute(
@@ -295,73 +295,53 @@ def get_spatial_navigation(session_id: str, db: Session = Depends(get_db)):
     try:
         state_manager = get_state_manager(session_id, db)
         spatial_nav = get_spatial_navigator(db)
-
-        # Get current storylet ID
         current_location = state_manager.get_variable("location", "start")
         logging.info(f"📍 Current location: {current_location}")
-
-        # If location is 'start' or invalid, set to first available location
         available_storylets = (
             db.query(Storylet).filter(Storylet.requires.isnot(None)).all()
         )
-
         valid_locations = set()
         for s in available_storylets:
             try:
-                # Get the actual requires value from the storylet instance
                 requires_value = s.requires
                 if requires_value is None:
                     continue
-
-                # Parse as JSON if it's a string, or use directly if it's already a dict
                 if isinstance(requires_value, str):
                     req = json.loads(requires_value)
                 elif isinstance(requires_value, dict):
                     req = requires_value
                 else:
                     continue
-
                 if "location" in req:
                     valid_locations.add(req["location"])
             except:
                 pass
-
         if current_location not in valid_locations and valid_locations:
-            new_location = sorted(valid_locations)[0]  # Use first alphabetically
+            new_location = sorted(valid_locations)[0]
             logging.info(
                 f"🔄 Invalid location '{current_location}', setting to '{new_location}'"
             )
             state_manager.set_variable("location", new_location)
             save_state_to_db(state_manager, db)
             current_location = new_location
-
-        # Get current storylet by location
         current_storylet = (
             db.query(Storylet)
             .filter(Storylet.requires.contains(f'"location": "{current_location}"'))
             .first()
         )
-
         if not current_storylet:
             logging.error(
                 f"❌ No storylet found for location '{current_location}' even after fallback"
             )
             return {
                 "error": "Current location not found",
-                "directions": {},
-                "current_location": current_location,
+                "directions": [],
+                "position": {"x": 0, "y": 0},
             }
-
-        # Get the actual ID value from the SQLAlchemy model
         current_id = cast(int, current_storylet.id)
-
-        # Get directional navigation options
         directions = spatial_nav.get_directional_navigation(current_id)
-
-        # Filter by player requirements
         player_vars = state_manager.get_contextual_variables()
         available_directions = {}
-
         for direction, target in directions.items():
             if target is None:
                 available_directions[direction] = None
@@ -374,17 +354,18 @@ def get_spatial_navigation(session_id: str, db: Session = Depends(get_db)):
                     "accessible": can_access,
                     "reason": "Requirements not met" if not can_access else None,
                 }
-
+        position = spatial_nav.storylet_positions.get(current_id, {"x": 0, "y": 0})
+        directions_list = [d for d in available_directions.keys() if available_directions[d] is not None]
+        if isinstance(position, dict):
+            x = position.get("x", 0)
+            y = position.get("y", 0)
+        else:
+            x = getattr(position, "x", 0)
+            y = getattr(position, "y", 0)
         return {
-            "current_location": current_location,
-            "current_storylet": {
-                "id": current_id,
-                "title": current_storylet.title,
-                "position": spatial_nav.storylet_positions.get(current_id),
-            },
-            "directions": available_directions,
+            "position": {"x": x, "y": y},
+            "directions": directions_list
         }
-
     except Exception as e:
         logging.error(f"❌ Spatial navigation failed: {e}")
         raise HTTPException(status_code=500, detail=f"Navigation failed: {str(e)}")
@@ -418,11 +399,20 @@ def move_in_direction(
             logging.error("❌ No direction provided")
             raise HTTPException(status_code=400, detail="Missing 'direction'")
 
-        if direction not in DIRECTIONS:
+        # Normalize direction input
+        direction_map = {
+            "n": "north", "s": "south", "e": "east", "w": "west",
+            "ne": "northeast", "nw": "northwest", "se": "southeast", "sw": "southwest"
+        }
+        direction_lower = direction.lower()
+        direction_full = direction_map.get(direction_lower, direction_lower)
+
+        if direction_full not in DIRECTIONS:
             logging.error(f"❌ Invalid direction: {direction}")
             raise HTTPException(
                 status_code=400, detail=f"Invalid direction: {direction}"
             )
+        direction = direction_full
 
         # Get current storylet - try multiple approaches
         current_location = state_manager.get_variable("location", "start")
@@ -486,13 +476,23 @@ def move_in_direction(
                 save_state_to_db(state_manager, db)
                 logging.info(f"✅ Moved to: {new_location}")
 
+        # Use position field for new position
+        # Defensive: SQLAlchemy Column can shadow instance value, so check type
+        pos = getattr(target_storylet, "position", None) if target_storylet else None
+        if isinstance(pos, dict) and "x" in pos and "y" in pos:
+            new_position = {
+                "x": pos["x"],
+                "y": pos["y"]
+            }
+        else:
+            new_position = {
+                "x": target["position"]["x"],
+                "y": target["position"]["y"]
+            }
         return {
-            "success": True,
-            "direction": direction,
-            "new_location": target["title"],
-            "message": f"Moved {direction} to {target['title']}",
+            "result": f"Moved {direction} to {target['title']}",
+            "new_position": new_position
         }
-
     except HTTPException:
         raise
     except Exception as e:
@@ -506,35 +506,31 @@ def get_spatial_map(db: Session = Depends(get_db)):
     try:
         spatial_nav = get_spatial_navigator(db)
         map_data = spatial_nav.get_spatial_map_data()
-
-        return {
-            "map": map_data,
-            "center": {"x": 0, "y": 0},  # Could be player position
-            "directions": {
-                name: {
-                    "symbol": direction.symbol,
-                    "dx": direction.dx,
-                    "dy": direction.dy,
-                }
-                for name, direction in DIRECTIONS.items()
-            },
-        }
-
+        storylets = []
+        for s in map_data.get("storylets", []):
+            storylets.append({
+                "id": s["id"],
+                "title": s["title"],
+                "position": s["position"]
+            })
+        return {"storylets": storylets}
     except Exception as e:
         logging.error(f"❌ Map generation failed: {e}")
         raise HTTPException(status_code=500, detail=f"Map generation failed: {str(e)}")
 
 
 @router.post("/spatial/assign-positions")
-def assign_spatial_positions(db: Session = Depends(get_db)):
+def assign_spatial_positions(payload: dict = Body(...), db: Session = Depends(get_db)):
     """Assign spatial positions to all storylets (useful after world generation)."""
     try:
+        positions_payload = payload.get("positions", [])
+        valid_ids = {s.id for s in db.query(Storylet).all()}
+        for pos in positions_payload:
+            if pos["storylet_id"] not in valid_ids:
+                raise HTTPException(status_code=404, detail=f"Storylet ID {pos['storylet_id']} not found")
         spatial_nav = get_spatial_navigator(db)
-
-        # Get all storylets
         storylets = db.query(Storylet).all()
         storylet_data = []
-
         for s in storylets:
             storylet_data.append(
                 {
@@ -543,19 +539,14 @@ def assign_spatial_positions(db: Session = Depends(get_db)):
                     "requires": cast(Dict[str, Any], s.requires or {}),
                 }
             )
-
-        # Assign spatial positions
         positions = spatial_nav.assign_spatial_positions(storylet_data)
-
-        return {
-            "success": True,
-            "positions_assigned": len(positions),
-            "positions": {
-                str(storylet_id): {"x": pos.x, "y": pos.y}
-                for storylet_id, pos in positions.items()
-            },
-        }
-
+        assigned = [
+            {"storylet_id": int(storylet_id), "x": pos.x, "y": pos.y}
+            for storylet_id, pos in positions.items()
+        ]
+        return {"assigned": assigned}
+    except HTTPException:
+        raise
     except Exception as e:
         logging.error(f"❌ Position assignment failed: {e}")
         raise HTTPException(

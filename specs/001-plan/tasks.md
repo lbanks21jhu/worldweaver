@@ -26,12 +26,12 @@
 - [ ] T009 Integration test: coordinate assignment and fallbacks in tests/integration/test_spatial_assignment.py
 
 ## Phase 3.3: Core Implementation
-- [ ] T010 [P] Implement Storylet spatial fields in src/models/schemas.py
-- [ ] T011 [P] Implement coordinate assignment logic in src/services/spatial_navigator.py
-- [ ] T012 Implement GET /api/spatial/navigation/{session_id} endpoint in src/api/game.py
-- [ ] T013 Implement POST /api/spatial/move/{session_id} endpoint in src/api/game.py
-- [ ] T014 Implement GET /api/spatial/map endpoint in src/api/game.py
-- [ ] T015 Implement POST /api/spatial/assign-positions endpoint in src/api/game.py
+- [x] T010 [P] Implement Storylet spatial fields in src/models/schemas.py
+- [x] T011 [P] Implement coordinate assignment logic in src/services/spatial_navigator.py
+- [x] T012 Implement GET /api/spatial/navigation/{session_id} endpoint in src/api/game.py
+- [x] T013 Implement POST /api/spatial/move/{session_id} endpoint in src/api/game.py
+- [x] T014 Implement GET /api/spatial/map endpoint in src/api/game.py
+- [x] T015 Implement POST /api/spatial/assign-positions endpoint in src/api/game.py
 - [ ] T016 Error handling and logging for spatial endpoints in src/services/spatial_navigator.py
 
 ## Phase 3.4: Integration
