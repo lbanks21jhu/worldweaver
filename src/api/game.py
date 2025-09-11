@@ -355,17 +355,18 @@ def get_spatial_navigation(session_id: str, db: Session = Depends(get_db)):
                     "reason": "Requirements not met" if not can_access else None,
                 }
         position = spatial_nav.storylet_positions.get(current_id, {"x": 0, "y": 0})
-        directions_list = [d for d in available_directions.keys() if available_directions[d] is not None]
+        directions_list = [
+            d
+            for d in available_directions.keys()
+            if available_directions[d] is not None
+        ]
         if isinstance(position, dict):
             x = position.get("x", 0)
             y = position.get("y", 0)
         else:
             x = getattr(position, "x", 0)
             y = getattr(position, "y", 0)
-        return {
-            "position": {"x": x, "y": y},
-            "directions": directions_list
-        }
+        return {"position": {"x": x, "y": y}, "directions": directions_list}
     except Exception as e:
         logging.error(f"❌ Spatial navigation failed: {e}")
         raise HTTPException(status_code=500, detail=f"Navigation failed: {str(e)}")
@@ -401,8 +402,14 @@ def move_in_direction(
 
         # Normalize direction input
         direction_map = {
-            "n": "north", "s": "south", "e": "east", "w": "west",
-            "ne": "northeast", "nw": "northwest", "se": "southeast", "sw": "southwest"
+            "n": "north",
+            "s": "south",
+            "e": "east",
+            "w": "west",
+            "ne": "northeast",
+            "nw": "northwest",
+            "se": "southeast",
+            "sw": "southwest",
         }
         direction_lower = direction.lower()
         direction_full = direction_map.get(direction_lower, direction_lower)
@@ -480,18 +487,12 @@ def move_in_direction(
         # Defensive: SQLAlchemy Column can shadow instance value, so check type
         pos = getattr(target_storylet, "position", None) if target_storylet else None
         if isinstance(pos, dict) and "x" in pos and "y" in pos:
-            new_position = {
-                "x": pos["x"],
-                "y": pos["y"]
-            }
+            new_position = {"x": pos["x"], "y": pos["y"]}
         else:
-            new_position = {
-                "x": target["position"]["x"],
-                "y": target["position"]["y"]
-            }
+            new_position = {"x": target["position"]["x"], "y": target["position"]["y"]}
         return {
             "result": f"Moved {direction} to {target['title']}",
-            "new_position": new_position
+            "new_position": new_position,
         }
     except HTTPException:
         raise
@@ -508,11 +509,9 @@ def get_spatial_map(db: Session = Depends(get_db)):
         map_data = spatial_nav.get_spatial_map_data()
         storylets = []
         for s in map_data.get("storylets", []):
-            storylets.append({
-                "id": s["id"],
-                "title": s["title"],
-                "position": s["position"]
-            })
+            storylets.append(
+                {"id": s["id"], "title": s["title"], "position": s["position"]}
+            )
         return {"storylets": storylets}
     except Exception as e:
         logging.error(f"❌ Map generation failed: {e}")
@@ -527,7 +526,10 @@ def assign_spatial_positions(payload: dict = Body(...), db: Session = Depends(ge
         valid_ids = {s.id for s in db.query(Storylet).all()}
         for pos in positions_payload:
             if pos["storylet_id"] not in valid_ids:
-                raise HTTPException(status_code=404, detail=f"Storylet ID {pos['storylet_id']} not found")
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Storylet ID {pos['storylet_id']} not found",
+                )
         spatial_nav = get_spatial_navigator(db)
         storylets = db.query(Storylet).all()
         storylet_data = []

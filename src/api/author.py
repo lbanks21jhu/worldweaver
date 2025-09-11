@@ -22,6 +22,7 @@ from ..services.game_logic import auto_populate_storylets
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import func
 
+
 def save_storylets_with_postprocessing(
     db: Session,
     storylets: list,
@@ -120,22 +121,26 @@ def save_storylets_with_postprocessing(
         "added": len(created_storylets),
         "storylets": created_storylets,
         "spatial_updates": updates,
-        "auto_improvements": get_improvement_summary(improvement_results)
-        if improvement_results
-        else None,
+        "auto_improvements": (
+            get_improvement_summary(improvement_results)
+            if improvement_results
+            else None
+        ),
         "improvement_details": improvement_results,
     }
+
 
 # =========================
 
 router = APIRouter()
+
 
 @router.post("/suggest", response_model=SuggestResp)
 def author_suggest(
     payload: SuggestReq, commit: bool = False, db: Session = Depends(get_db)
 ):
     """Generate storylet suggestions using LLM.
-    
+
     # bible can include allowed qualities/items, setting details, etc. so the model stays on rails
     # example bible structure you can POST:
     example_bible = {
@@ -146,10 +151,12 @@ def author_suggest(
             "time_of_day": "morning"
         }
     }
-    
+
     """
     try:
-        raw = llm_suggest_storylets(payload.n, payload.themes or [], payload.bible or {})
+        raw = llm_suggest_storylets(
+            payload.n, payload.themes or [], payload.bible or {}
+        )
         items = [StoryletIn(**r) for r in (raw or [])]
 
         # extreme fallback if model returns nothing
@@ -183,7 +190,9 @@ def author_suggest(
                     improvement_trigger="author-suggest",
                     assign_spatial=True,
                 )
-                logging.info(f"author_suggest: saved {save_result.get('added', 0)} storylets")
+                logging.info(
+                    f"author_suggest: saved {save_result.get('added', 0)} storylets"
+                )
             except Exception:
                 logging.exception("Failed to save suggested storylets")
 
@@ -348,7 +357,9 @@ def generate_intelligent_storylets(
 
         if save_result.get("auto_improvements"):
             base_response["auto_improvements"] = save_result.get("auto_improvements")
-            base_response["improvement_details"] = save_result.get("improvement_details")
+            base_response["improvement_details"] = save_result.get(
+                "improvement_details"
+            )
 
         return base_response
 
@@ -459,7 +470,9 @@ def generate_targeted_storylets(db: Session = Depends(get_db)):
 
         if save_result.get("auto_improvements"):
             base_response["auto_improvements"] = save_result.get("auto_improvements")
-            base_response["improvement_details"] = save_result.get("improvement_details")
+            base_response["improvement_details"] = save_result.get(
+                "improvement_details"
+            )
 
         return base_response
 
@@ -508,7 +521,10 @@ def generate_world_from_description(
 
         # Save generated storylets to DB (delay spatial assignment so we can place them with the world layout)
         save_result = save_storylets_with_postprocessing(
-            db=db, storylets=storylet_dicts, improvement_trigger="", assign_spatial=False
+            db=db,
+            storylets=storylet_dicts,
+            improvement_trigger="",
+            assign_spatial=False,
         )
 
         # Use the helper's created storylets for later spatial placement
@@ -571,7 +587,10 @@ def generate_world_from_description(
             choices=starting_storylet_data["choices"],
             requires={},  # No requirements - always accessible
             weight=2.0,  # Higher weight to be chosen more often
-            position={"x": 0, "y": 0},  # Consistent position field for spatial navigation
+            position={
+                "x": 0,
+                "y": 0,
+            },  # Consistent position field for spatial navigation
         )
         db.add(starting_storylet)
         created_storylets.append(

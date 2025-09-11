@@ -1,8 +1,10 @@
 """
 Contract test for GET /api/spatial/navigation/{session_id}
 """
+
 import pytest
 import httpx
+
 
 @pytest.mark.asyncio
 async def test_get_spatial_navigation_contract():

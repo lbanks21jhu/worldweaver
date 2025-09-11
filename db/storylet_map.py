@@ -212,8 +212,10 @@ def generate_html_map(storylets, analysis):
         grid_y = int(500 * (pos[1] - min_y) / range_y) + 50
         for storylet in storylets_at_pos:
             html_content += f'<div style="position:absolute; left:{grid_x}px; top:{grid_y}px; min-width:120px; background:rgba(46,204,113,0.2); border:2px solid #2ecc71; border-radius:8px; padding:10px; text-align:center; color:#fff;">'
-            html_content += f'<strong>{storylet["title"]}</strong><br>(x={pos[0]}, y={pos[1]})'
-            html_content += '</div>'
+            html_content += (
+                f'<strong>{storylet["title"]}</strong><br>(x={pos[0]}, y={pos[1]})'
+            )
+            html_content += "</div>"
 
     html_content += """
             </div>

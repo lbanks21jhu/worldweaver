@@ -1,8 +1,10 @@
 """
 Contract test for POST /api/spatial/assign-positions
 """
+
 import pytest
 import httpx
+
 
 @pytest.mark.asyncio
 async def test_post_spatial_assign_positions_contract():
@@ -19,5 +21,7 @@ async def test_post_spatial_assign_positions_contract():
             assert "y" in a and isinstance(a["y"], int)
         # Edge case: assign to invalid storylet_id
         bad_payload = {"positions": [{"storylet_id": 9999, "x": 0, "y": 0}]}
-        bad_response = await client.post("/api/spatial/assign-positions", json=bad_payload)
+        bad_response = await client.post(
+            "/api/spatial/assign-positions", json=bad_payload
+        )
         assert bad_response.status_code in (400, 404)

@@ -74,7 +74,9 @@ class SpatialNavigator:
         # Build query based on whether specific IDs are provided
         # Now, we check for position field being null or missing
         if storylet_ids:
-            id_placeholders = ",".join([":id" + str(i) for i in range(len(storylet_ids))])
+            id_placeholders = ",".join(
+                [":id" + str(i) for i in range(len(storylet_ids))]
+            )
             query = f"""
                 SELECT id, title, requires, position 
                 FROM storylets 
@@ -83,7 +85,9 @@ class SpatialNavigator:
                 AND requires IS NOT NULL 
                 AND requires != '{{}}'
             """
-            params = {f"id{i}": storylet_id for i, storylet_id in enumerate(storylet_ids)}
+            params = {
+                f"id{i}": storylet_id for i, storylet_id in enumerate(storylet_ids)
+            }
             result = db_session.execute(text(query), params)
         else:
             result = db_session.execute(
@@ -114,7 +118,9 @@ class SpatialNavigator:
                         "requires": requires,
                         "choices": [],
                         "weight": 1.0,
-                        "position": json.loads(position_json) if position_json else None,
+                        "position": (
+                            json.loads(position_json) if position_json else None
+                        ),
                     }
                 )
 
@@ -192,6 +198,7 @@ class SpatialNavigator:
 
     def _ensure_spatial_columns(self):
         """Ensure the database has spatial columns."""
+
     # No-op: position is now a JSON field, no need to add columns
     pass
 

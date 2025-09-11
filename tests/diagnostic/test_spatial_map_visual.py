@@ -42,9 +42,7 @@ def generate_visual_map() -> str:
                     "id": s.id,
                     "title": s.title,
                     "text": (
-                        text_val[:100] + "..."
-                        if len(text_val) > 100
-                        else text_val
+                        text_val[:100] + "..." if len(text_val) > 100 else text_val
                     ),
                     "requires": s.requires or {},
                     "choices": s.choices or [],

@@ -1,8 +1,10 @@
 """
 Integration test for coordinate assignment and fallbacks
 """
+
 import pytest
 import httpx
+
 
 @pytest.mark.asyncio
 async def test_coordinate_assignment_and_fallbacks():
@@ -18,5 +20,7 @@ async def test_coordinate_assignment_and_fallbacks():
             assert "y" in a and isinstance(a["y"], int)
         # Edge case: fallback if position already taken
         payload_conflict = {"positions": [{"storylet_id": 2, "x": 0, "y": 0}]}
-        conflict_response = await client.post("/api/spatial/assign-positions", json=payload_conflict)
+        conflict_response = await client.post(
+            "/api/spatial/assign-positions", json=payload_conflict
+        )
         assert conflict_response.status_code in (200, 409)
